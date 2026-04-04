@@ -16,7 +16,9 @@
         "package": "npm run build && electron-builder",
         "package:mac": "npm run build && electron-builder --mac",
         "package:win": "npm run build && electron-builder --win",
-        "package:linux": "npm run build && electron-builder --linux"
+        "package:linux": "npm run build && electron-builder --linux",
+        "dev:server": "cd server && npm run dev",
+        "dev:all": "concurrently \"npm run dev:renderer\" \"npm run dev:server\""
     },
     "build": {
         "appId": "com.typeracer.desktop",
