@@ -7,6 +7,7 @@ import { useSpeedTier } from '../hooks/useSpeedTier';
 import { useFireStreak } from '../hooks/useFireStreak';
 import { useGhost } from '../hooks/useGhost';
 import FireBanner from './FireBanner';
+import RaceTrack from './RaceTrack';
 import './TypeRacer.css';
 
 interface PlayerProgress {
@@ -306,6 +307,10 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
             <div className="progress-rail">
                 <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
             </div>
+
+            {multiplayerPlayers && multiplayerPlayers.length > 0 && (
+                <RaceTrack players={multiplayerPlayers} />
+            )}
 
             <FireBanner tier={fireTier} streak={fireCount} visible={fireActive} />
 
