@@ -73,9 +73,12 @@ export const textPassages: TextPassage[] = [
   }
 ];
 
-export const getRandomPassage = (): TextPassage => {
-  const randomIndex = Math.floor(Math.random() * textPassages.length);
-  return textPassages[randomIndex];
+export const getRandomPassage = (difficulty?: 'easy' | 'medium' | 'hard'): TextPassage => {
+  const pool = difficulty
+    ? textPassages.filter(p => p.difficulty === difficulty)
+    : textPassages;
+  const randomIndex = Math.floor(Math.random() * pool.length);
+  return pool[randomIndex];
 };
 
 export const getPassageByDifficulty = (difficulty: 'easy' | 'medium' | 'hard'): TextPassage => {
