@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import TypeRacer from './components/TypeRacer';
 import WelcomeScreen from './components/WelcomeScreen';
 import ResultsScreen from './components/ResultsScreen';
-import { GameState, RaceResult } from './types/GameTypes';
+import { GameState, RaceResult, Difficulty, TextPassage } from './types/GameTypes';
+import { getRandomPassage } from './data/textPassages';
+import {
+    getBests, updateBest, getHistory, addHistoryEntry,
+    getDailyStreak, incrementDailyStreak,
+    getDifficulty, setDifficulty,
+    isGhostEnabled, setGhostEnabled,
+} from './utils/storage';
 
-// Extend window interface for Electron API
 declare global {
     interface Window {
         electronAPI?: {
@@ -18,28 +24,38 @@ declare global {
 function App() {
     const [gameState, setGameState] = useState<GameState>('welcome');
     const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
+    const [difficulty, setDifficultyState] = useState<Difficulty>(getDifficulty());
+    const [passage, setPassage] = useState<TextPassage>(getRandomPassage(getDifficulty()));
+    const [ghostEnabled, setGhostEnabledState] = useState(isGhostEnabled());
+    const [sessionStreak, setSessionStreak] = useState(0);
+    const [isNewBest, setIsNewBest] = useState(false);
+    const [lastFireStreak, setLastFireStreak] = useState(0);
+    const [bests, setBests] = useState(getBests());
+    const [dailyStreak, setDailyStreak] = useState(getDailyStreak());
+    const [totalRaces, setTotalRaces] = useState(getHistory().length);
 
     useEffect(() => {
         if (window.electronAPI) {
             window.electronAPI.onNewRace(() => {
-                setGameState('welcome');
-                setRaceResult(null);
+                returnToWelcome();
             });
-
             window.electronAPI.onRestartRace(() => {
-                setGameState('racing');
+                startRace();
             });
         }
 
         const handleKeyDown = (event: KeyboardEvent) => {
             if ((event.metaKey || event.ctrlKey) && event.key === 'n') {
                 event.preventDefault();
-                setGameState('welcome');
-                setRaceResult(null);
+                returnToWelcome();
             }
             if ((event.metaKey || event.ctrlKey) && event.key === 'r') {
                 event.preventDefault();
-                setGameState('racing');
+                startRace();
+            }
+            if (event.key === 'Enter' && gameState === 'welcome') {
+                event.preventDefault();
+                startRace();
             }
         };
 
@@ -52,39 +68,107 @@ function App() {
             }
             document.removeEventListener('keydown', handleKeyDown);
         };
+    }, [gameState, difficulty]);
+
+    const handleDifficultyChange = useCallback((d: Difficulty) => {
+        setDifficultyState(d);
+        setDifficulty(d);
     }, []);
 
-    const startRace = () => {
-        setGameState('racing');
-        setRaceResult(null);
-    };
+    const handleGhostToggle = useCallback(() => {
+        setGhostEnabledState(prev => {
+            const next = !prev;
+            setGhostEnabled(next);
+            return next;
+        });
+    }, []);
 
-    const endRace = (result: RaceResult) => {
+    const startRace = useCallback(() => {
+        const newPassage = getRandomPassage(difficulty);
+        setPassage(newPassage);
+        setRaceResult(null);
+        setIsNewBest(false);
+        setGameState('racing');
+    }, [difficulty]);
+
+    const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number) => {
         setRaceResult(result);
+        setLastFireStreak(fireStreak);
+
+        const newBest = updateBest(difficulty, result.wpm, result.accuracy);
+        setIsNewBest(newBest);
+        setBests(getBests());
+
+        addHistoryEntry({
+            wpm: result.wpm,
+            accuracy: result.accuracy,
+            difficulty,
+            passageTitle: passage.title,
+            timestamp: Date.now(),
+            fireStreak,
+        });
+        setTotalRaces(prev => prev + 1);
+
+        setSessionStreak(prev => prev + 1);
+        const updatedStreak = incrementDailyStreak();
+        setDailyStreak(updatedStreak);
+
         setGameState('results');
-    };
+    }, [difficulty, passage]);
 
-    const restartRace = () => {
-        setGameState('racing');
+    const restartRace = useCallback(() => {
         setRaceResult(null);
-    };
+        setIsNewBest(false);
+        const newPassage = getRandomPassage(difficulty);
+        setPassage(newPassage);
+        setGameState('racing');
+    }, [difficulty]);
 
-    const returnToWelcome = () => {
+    const returnToWelcome = useCallback(() => {
         setGameState('welcome');
         setRaceResult(null);
-    };
+        setIsNewBest(false);
+    }, []);
+
+    const handleNewText = useCallback(() => {
+        const newPassage = getRandomPassage(difficulty);
+        setPassage(newPassage);
+    }, [difficulty]);
+
+    const handleStartMultiplayer = useCallback(() => {
+        // Placeholder — multiplayer modal will be wired in Task 14
+        alert('Multiplayer coming soon!');
+    }, []);
 
     return (
         <div className="app">
             {gameState === 'welcome' && (
-                <WelcomeScreen onStartRace={startRace} />
+                <WelcomeScreen
+                    onStartSolo={startRace}
+                    onStartMultiplayer={handleStartMultiplayer}
+                    difficulty={difficulty}
+                    onDifficultyChange={handleDifficultyChange}
+                    bests={bests}
+                    dailyStreak={dailyStreak}
+                    totalRaces={totalRaces}
+                    ghostEnabled={ghostEnabled}
+                    onGhostToggle={handleGhostToggle}
+                />
             )}
             {gameState === 'racing' && (
-                <TypeRacer onRaceComplete={endRace} />
+                <TypeRacer
+                    passage={passage}
+                    ghostEnabled={ghostEnabled}
+                    sessionStreak={sessionStreak}
+                    onRaceComplete={handleRaceComplete}
+                    onNewText={handleNewText}
+                />
             )}
             {gameState === 'results' && raceResult && (
                 <ResultsScreen
                     result={raceResult}
+                    isNewBest={isNewBest}
+                    fireStreak={lastFireStreak}
                     onRestart={restartRace}
                     onNewRace={returnToWelcome}
                 />

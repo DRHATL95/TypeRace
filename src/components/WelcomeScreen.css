@@ -1,311 +1,356 @@
+/* ── Welcome Screen ── Neon Velocity ───────────────────── */
+
 .welcome-screen {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    padding: 2rem;
-    overflow-y: auto;
-}
-
-.welcome-screen::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.1)"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
-    opacity: 0.3;
-    pointer-events: none;
-}
-
-.welcome-container {
-    max-width: 1000px;
-    width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 24px;
-    padding: 3rem;
-    text-align: center;
-    position: relative;
-    z-index: 1;
-    animation: fadeIn 1s ease-out;
-}
-
-.welcome-header {
-    margin-bottom: 2rem;
-}
-
-.welcome-title {
-    font-size: 2.5rem;
-    font-weight: 900;
-    margin-bottom: 0.5rem;
-    line-height: 1.1;
-}
-
-.title-main {
-    display: block;
-    background: linear-gradient(45deg, #fff, #e0e7ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: slideIn 0.8s ease-out;
-}
-
-.title-sub {
-    display: block;
-    font-size: 1.25rem;
-    font-weight: 300;
-    opacity: 0.8;
-    margin-top: 0.25rem;
-    animation: slideIn 0.8s ease-out 0.2s both;
-}
-
-.welcome-subtitle {
-    font-size: 1rem;
-    opacity: 0.9;
-    max-width: 600px;
-    margin: 0 auto 1rem auto;
-    line-height: 1.4;
-    animation: fadeIn 1s ease-out 0.4s both;
-}
-
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
-    margin-bottom: 3rem;
-    animation: fadeIn 1s ease-out 0.6s both;
-}
-
-.feature-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    padding: 2rem;
-    text-align: center;
-    transition: all 0.3s ease;
+    min-height: 100vh;
+    background: var(--bg-deep);
     position: relative;
     overflow: hidden;
+    padding: 2rem;
 }
 
-.feature-card::before {
-    content: '';
+/* ── Animated grid background ──────────────────────────── */
+.welcome-grid-bg {
     position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-    transition: left 0.5s ease;
+    inset: 0;
+    background-image:
+        linear-gradient(var(--text-ghost) 1px, transparent 1px),
+        linear-gradient(90deg, var(--text-ghost) 1px, transparent 1px);
+    background-size: 60px 60px;
+    opacity: 0.08;
+    animation: gridScroll 4s linear infinite;
 }
 
-.feature-card:hover::before {
-    left: 100%;
-}
-
-.feature-card:hover {
-    transform: translateY(-10px);
-    background: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-}
-
-.feature-icon {
-    font-size: 3rem;
-    margin-bottom: 1rem;
-    display: block;
-}
-
-.feature-card h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    background: linear-gradient(45deg, #fff, #e0e7ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.feature-card p {
-    opacity: 0.8;
-    line-height: 1.5;
-    font-size: 0.95rem;
-}
-
-.welcome-controls {
-    margin-bottom: 2rem;
-    animation: fadeIn 1s ease-out 0.8s both;
-}
-
-.start-race-btn {
-    display: inline-flex;
+/* ── Content ───────────────────────────────────────────── */
+.welcome-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
     align-items: center;
+    gap: 3rem;
+    max-width: 640px;
+    width: 100%;
+}
+
+/* ── Hero ──────────────────────────────────────────────── */
+.welcome-hero {
+    text-align: center;
+    animation: fadeUp 0.8s ease-out both;
+}
+
+.hero-label {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.35em;
+    color: var(--cyan);
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    animation: neonPulse 3s ease-in-out infinite;
+}
+
+.hero-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: 0.9;
+    margin-bottom: 1.5rem;
+}
+
+.hero-title-line {
+    display: block;
+    font-size: clamp(4rem, 12vw, 8rem);
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+}
+
+.hero-title-line.accent {
+    color: var(--cyan);
+    text-shadow: var(--glow-cyan);
+    animation: glitch 6s ease-in-out infinite;
+}
+
+.hero-tagline {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 300;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    letter-spacing: 0.02em;
+}
+
+/* ── Daily streak ──────────────────────────────────────── */
+.daily-streak {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--amber);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    animation: fadeUp 0.8s ease-out 0.15s both;
+}
+
+.streak-star {
+    text-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
+}
+
+/* ── Difficulty picker ─────────────────────────────────── */
+.difficulty-picker {
+    display: flex;
+    gap: 0.5rem;
+    animation: fadeUp 0.8s ease-out 0.2s both;
+}
+
+.diff-btn {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.5rem 1.25rem;
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    border-radius: 2px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    transition: all 0.2s ease;
+}
+
+.diff-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0, 240, 255, 0.08);
+}
+
+.diff-btn:hover:not(.active) {
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+/* ── Mode buttons ──────────────────────────────────────── */
+.mode-buttons {
+    display: flex;
     gap: 0.75rem;
-    padding: 1rem 2.5rem;
-    background: linear-gradient(45deg, #3b82f6, #8b5cf6);
-    border: none;
-    border-radius: 50px;
-    color: white;
-    font-size: 1.25rem;
+    animation: fadeUp 0.8s ease-out 0.3s both;
+}
+
+.mode-btn {
+    font-family: var(--font-display);
+    font-size: 1rem;
     font-weight: 600;
+    letter-spacing: 0.2em;
+    padding: 0.9rem 2.5rem;
+    background: transparent;
+    border: 1px solid;
+    border-radius: 2px;
     cursor: pointer;
     transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 2rem;
-    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
 }
 
-.start-race-btn::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.5s ease;
+.mode-solo {
+    border-color: var(--cyan);
+    color: var(--cyan);
 }
 
-.start-race-btn:hover::before {
-    left: 100%;
+.mode-solo:hover {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: var(--glow-cyan);
+    transform: translateY(-2px);
 }
 
-.start-race-btn:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 15px 40px rgba(59, 130, 246, 0.4);
+.mode-multi {
+    border-color: var(--magenta);
+    color: var(--magenta);
 }
 
-.start-race-btn:active {
-    transform: translateY(-1px);
+.mode-multi:hover {
+    background: rgba(255, 0, 128, 0.1);
+    box-shadow: var(--glow-magenta);
+    transform: translateY(-2px);
 }
 
-.btn-text {
-    position: relative;
-    z-index: 1;
+/* ── Ghost toggle ──────────────────────────────────────── */
+.welcome-options {
+    animation: fadeUp 0.8s ease-out 0.5s both;
 }
 
-.btn-icon {
-    position: relative;
-    z-index: 1;
-    font-size: 1.5rem;
-}
-
-.quick-stats {
+.ghost-toggle {
     display: flex;
-    justify-content: center;
-    gap: 1.5rem;
-}
-
-.quick-stat {
-    text-align: center;
-}
-
-.stat-number {
-    display: block;
-    font-size: 1.5rem;
-    font-weight: 700;
-    background: linear-gradient(45deg, #fff, #e0e7ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 0.25rem;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    opacity: 0.8;
-    text-transform: uppercase;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    cursor: pointer;
     letter-spacing: 0.05em;
 }
 
-.welcome-footer {
-    animation: fadeIn 1s ease-out 1s both;
-    padding-bottom: 0.5rem;
+.ghost-toggle input[type="checkbox"] {
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--text-ghost);
+    border-radius: 2px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
 }
 
-.welcome-footer p {
-    opacity: 0.7;
-    margin-bottom: 0.5rem;
-    font-size: 0.8rem;
+.ghost-toggle input[type="checkbox"]:checked {
+    border-color: var(--magenta);
+    background: rgba(255, 0, 128, 0.2);
 }
 
-.keyboard-shortcuts {
+.ghost-toggle input[type="checkbox"]:checked::after {
+    content: '';
+    position: absolute;
+    inset: 2px;
+    background: var(--magenta);
+    border-radius: 1px;
+}
+
+/* ── Stats strip ───────────────────────────────────────── */
+.welcome-stats-strip {
     display: flex;
-    justify-content: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.25rem 2rem;
+    background: var(--bg-raised);
+    border: 1px solid rgba(0, 240, 255, 0.08);
+    border-radius: 2px;
+    animation: fadeUp 0.8s ease-out 0.4s both;
 }
 
-.shortcut {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+.strip-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
 }
 
-/* Responsive design */
-@media (max-width: 768px) {
-    .welcome-container {
+.strip-value {
+    font-family: var(--font-display);
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.strip-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.strip-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--text-ghost);
+    opacity: 0.3;
+}
+
+/* ── Keyboard shortcuts footer ─────────────────────────── */
+.welcome-keys {
+    display: flex;
+    gap: 2rem;
+    animation: fadeUp 0.8s ease-out 0.6s both;
+}
+
+.key-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-ghost);
+}
+
+.key-group kbd {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    background: var(--bg-surface);
+    border: 1px solid var(--text-ghost);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+}
+
+/* ── Decorative elements ───────────────────────────────── */
+.welcome-decoration {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.deco-line {
+    position: absolute;
+    background: var(--cyan);
+    opacity: 0.06;
+}
+
+.deco-line-1 {
+    top: 30%;
+    left: 0;
+    right: 0;
+    height: 1px;
+}
+
+.deco-line-2 {
+    bottom: 25%;
+    left: 0;
+    right: 0;
+    height: 1px;
+}
+
+.deco-corner {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-color: var(--cyan);
+    border-style: solid;
+    border-width: 0;
+    opacity: 0.15;
+}
+
+.deco-corner-tl {
+    top: 2rem;
+    left: 2rem;
+    border-top-width: 2px;
+    border-left-width: 2px;
+}
+
+.deco-corner-br {
+    bottom: 2rem;
+    right: 2rem;
+    border-bottom-width: 2px;
+    border-right-width: 2px;
+}
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .welcome-content {
+        gap: 2rem;
+    }
+
+    .hero-title-line {
+        font-size: clamp(3rem, 15vw, 5rem);
+    }
+
+    .welcome-stats-strip {
+        gap: 1rem;
         padding: 1rem;
+        flex-wrap: wrap;
+        justify-content: center;
     }
 
-    .welcome-title {
-        font-size: 2.5rem;
-    }
-
-    .title-sub {
-        font-size: 1.5rem;
-    }
-
-    .welcome-subtitle {
-        font-size: 1rem;
-    }
-
-    .features-grid {
-        grid-template-columns: 1fr;
+    .welcome-keys {
+        flex-wrap: wrap;
+        justify-content: center;
         gap: 1rem;
-    }
-
-    .feature-card {
-        padding: 1.5rem;
-    }
-
-    .start-race-btn {
-        padding: 0.75rem 2rem;
-        font-size: 1rem;
-    }
-
-    .quick-stats {
-        gap: 1.5rem;
-    }
-
-    .stat-number {
-        font-size: 1.5rem;
-    }
-
-    .keyboard-shortcuts {
-        gap: 1rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .quick-stats {
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .keyboard-shortcuts {
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
     }
 }

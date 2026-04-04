@@ -1,83 +1,123 @@
 import React from 'react';
+import { Difficulty, PersonalBests, DailyStreak } from '../types/GameTypes';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
-    onStartRace: () => void;
+    onStartSolo: () => void;
+    onStartMultiplayer: () => void;
+    difficulty: Difficulty;
+    onDifficultyChange: (d: Difficulty) => void;
+    bests: PersonalBests;
+    dailyStreak: DailyStreak;
+    totalRaces: number;
+    ghostEnabled: boolean;
+    onGhostToggle: () => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartRace }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
+    onStartSolo,
+    onStartMultiplayer,
+    difficulty,
+    onDifficultyChange,
+    bests,
+    dailyStreak,
+    totalRaces,
+    ghostEnabled,
+    onGhostToggle,
+}) => {
+    const currentBest = bests[difficulty];
+    const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
+
     return (
         <div className="welcome-screen">
-            <div className="welcome-container">
-                <div className="welcome-header">
-                    <h1 className="welcome-title">
-                        <span className="title-main">TypeRacer</span>
-                        <span className="title-sub">Desktop</span>
+            <div className="welcome-grid-bg" />
+
+            <div className="welcome-content">
+                <header className="welcome-hero">
+                    <div className="hero-label">TYPING VELOCITY ENGINE</div>
+                    <h1 className="hero-title">
+                        <span className="hero-title-line">TYPE</span>
+                        <span className="hero-title-line accent">RACE</span>
                     </h1>
-                    <p className="welcome-subtitle">
-                        Test your typing speed and accuracy in this beautiful desktop racing experience
-                    </p>
+                </header>
+
+                {dailyStreak.count > 0 && (
+                    <div className="daily-streak">
+                        <span className="streak-star">&#9733;</span>
+                        <span>{dailyStreak.count} DAY STREAK</span>
+                    </div>
+                )}
+
+                <div className="difficulty-picker">
+                    {difficulties.map(d => (
+                        <button
+                            key={d}
+                            className={`diff-btn${d === difficulty ? ' active' : ''}`}
+                            onClick={() => onDifficultyChange(d)}
+                        >
+                            {d.toUpperCase()}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="features-grid">
-                    <div className="feature-card">
-                        <div className="feature-icon">⚡</div>
-                        <h3>Lightning Fast</h3>
-                        <p>Real-time typing feedback with instant WPM and accuracy calculations</p>
-                    </div>
-
-                    <div className="feature-card">
-                        <div className="feature-icon">🎯</div>
-                        <h3>Multiple Levels</h3>
-                        <p>Choose from easy, medium, and hard difficulty levels with diverse text passages</p>
-                    </div>
-
-                    <div className="feature-card">
-                        <div className="feature-icon">📊</div>
-                        <h3>Detailed Stats</h3>
-                        <p>Track your progress with comprehensive statistics and performance metrics</p>
-                    </div>
-
-                    <div className="feature-card">
-                        <div className="feature-icon">🎨</div>
-                        <h3>Beautiful UI</h3>
-                        <p>Enjoy a modern, glass-morphism design that's easy on the eyes</p>
-                    </div>
-                </div>
-
-                <div className="welcome-controls">
-                    <button onClick={onStartRace} className="start-race-btn">
-                        <span className="btn-text">Start Racing</span>
-                        <span className="btn-icon">🏁</span>
+                <div className="mode-buttons">
+                    <button onClick={onStartSolo} className="mode-btn mode-solo">
+                        SOLO
                     </button>
+                    <button onClick={onStartMultiplayer} className="mode-btn mode-multi">
+                        MULTIPLAYER
+                    </button>
+                </div>
 
-                    <div className="quick-stats">
-                        <div className="quick-stat">
-                            <span className="stat-number">10+</span>
-                            <span className="stat-label">Text Passages</span>
-                        </div>
-                        <div className="quick-stat">
-                            <span className="stat-number">3</span>
-                            <span className="stat-label">Difficulty Levels</span>
-                        </div>
-                        <div className="quick-stat">
-                            <span className="stat-number">∞</span>
-                            <span className="stat-label">Fun Factor</span>
-                        </div>
+                <div className="welcome-stats-strip">
+                    <div className="strip-item">
+                        <span className="strip-value">{currentBest ? currentBest.wpm : '--'}</span>
+                        <span className="strip-label">Best WPM</span>
+                    </div>
+                    <div className="strip-divider" />
+                    <div className="strip-item">
+                        <span className="strip-value">{currentBest ? `${currentBest.accuracy}%` : '--'}</span>
+                        <span className="strip-label">Best Acc</span>
+                    </div>
+                    <div className="strip-divider" />
+                    <div className="strip-item">
+                        <span className="strip-value">{totalRaces}</span>
+                        <span className="strip-label">Races</span>
                     </div>
                 </div>
 
-                <div className="welcome-footer">
-                    <p>Built with ❤️ using Electron, React & TypeScript</p>
-                    <div className="keyboard-shortcuts">
-                        <span className="shortcut">⌘+N</span>
+                <div className="welcome-options">
+                    <label className="ghost-toggle">
+                        <input
+                            type="checkbox"
+                            checked={ghostEnabled}
+                            onChange={onGhostToggle}
+                        />
+                        <span>Ghost Racing</span>
+                    </label>
+                </div>
+
+                <footer className="welcome-keys">
+                    <div className="key-group">
+                        <kbd>Cmd+N</kbd>
                         <span>New Race</span>
-                        <span className="shortcut">⌘+R</span>
+                    </div>
+                    <div className="key-group">
+                        <kbd>Cmd+R</kbd>
                         <span>Restart</span>
-                        <span className="shortcut">F11</span>
+                    </div>
+                    <div className="key-group">
+                        <kbd>F11</kbd>
                         <span>Fullscreen</span>
                     </div>
-                </div>
+                </footer>
+            </div>
+
+            <div className="welcome-decoration">
+                <div className="deco-line deco-line-1" />
+                <div className="deco-line deco-line-2" />
+                <div className="deco-corner deco-corner-tl" />
+                <div className="deco-corner deco-corner-br" />
             </div>
         </div>
     );
