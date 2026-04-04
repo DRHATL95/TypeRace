@@ -1,3 +1,38 @@
+/* ── Neon Velocity Design System ────────────────────────── */
+
+:root {
+    --bg-deep:    #060a14;
+    --bg-base:    #0a0e1a;
+    --bg-raised:  #0f1629;
+    --bg-surface: #151d33;
+
+    --cyan:       #00f0ff;
+    --cyan-dim:   #00f0ff66;
+    --magenta:    #ff0080;
+    --magenta-dim:#ff008066;
+    --green:      #00ff88;
+    --green-dim:  #00ff8844;
+    --red:        #ff3366;
+    --red-dim:    #ff336644;
+    --amber:      #ffaa00;
+
+    --text-primary:   #e0e8ff;
+    --text-secondary: #7a8bb5;
+    --text-ghost:     #3a4a6b;
+
+    --font-display: 'Chakra Petch', sans-serif;
+    --font-body:    'Outfit', sans-serif;
+    --font-mono:    'JetBrains Mono', monospace;
+
+    --glow-cyan:    0 0 20px #00f0ff44, 0 0 60px #00f0ff22;
+    --glow-magenta: 0 0 20px #ff008044, 0 0 60px #ff008022;
+    --glow-green:   0 0 20px #00ff8844, 0 0 60px #00ff8822;
+
+    --radius-sm: 6px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -11,100 +46,135 @@ html {
 }
 
 body {
-    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--bg-deep);
+    color: var(--text-primary);
     overflow-x: hidden;
     height: 100%;
 }
 
 #root {
     width: 100vw;
+    min-height: 100vh;
 }
 
 .app {
     width: 100%;
-    height: 100%;
+    min-height: 100vh;
+    position: relative;
 }
 
-/* Custom scrollbar */
+/* ── Scanline overlay ──────────────────────────────────── */
+.app::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.03) 2px,
+        rgba(0, 0, 0, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
+    background: var(--bg-deep);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
+    background: var(--text-ghost);
+    border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
+    background: var(--text-secondary);
 }
 
-/* Animations */
+/* ── Keyframes ─────────────────────────────────────────── */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
 
-@keyframes slideIn {
-    from {
-        transform: translateX(-100%);
-    }
-
-    to {
-        transform: translateX(0);
-    }
+@keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-40px); }
+    to   { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes pulse {
-
-    0%,
-    100% {
-        transform: scale(1);
-    }
-
-    50% {
-        transform: scale(1.05);
-    }
+@keyframes glitch {
+    0%   { text-shadow: 2px 0 var(--cyan), -2px 0 var(--magenta); }
+    20%  { text-shadow: -2px 0 var(--cyan), 2px 0 var(--magenta); }
+    40%  { text-shadow: 2px -1px var(--cyan), -2px 1px var(--magenta); }
+    60%  { text-shadow: -1px 2px var(--cyan), 1px -2px var(--magenta); }
+    80%  { text-shadow: 1px 0 var(--cyan), -1px 0 var(--magenta); }
+    100% { text-shadow: 2px 0 var(--cyan), -2px 0 var(--magenta); }
 }
 
-@keyframes typewriter {
-    from {
-        width: 0;
-    }
-
-    to {
-        width: 100%;
-    }
+@keyframes neonPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.7; }
 }
 
-.fade-in {
-    animation: fadeIn 0.5s ease-out;
+@keyframes cursorBlink {
+    0%, 49% { opacity: 1; }
+    50%, 100% { opacity: 0; }
 }
 
-.slide-in {
-    animation: slideIn 0.3s ease-out;
+@keyframes scanDown {
+    from { transform: translateY(-100%); }
+    to   { transform: translateY(100vh); }
 }
 
-.pulse {
-    animation: pulse 2s infinite;
+@keyframes barFill {
+    from { transform: scaleX(0); }
+    to   { transform: scaleX(1); }
 }
 
-.typewriter {
-    animation: typewriter 2s steps(40, end);
+@keyframes shimmer {
+    from { transform: translateX(-100%); }
+    to   { transform: translateX(200%); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+}
+
+@keyframes gridScroll {
+    from { transform: translateY(0); }
+    to   { transform: translateY(60px); }
+}
+
+/* ── Selection style ───────────────────────────────────── */
+::selection {
+    background: var(--cyan-dim);
+    color: var(--text-primary);
+}
+
+/* ── Error shake ───────────────────────────────────────── */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%      { transform: translateX(-4px); }
+    40%      { transform: translateX(4px); }
+    60%      { transform: translateX(-3px); }
+    80%      { transform: translateX(3px); }
+}
+
+.text-container.shake {
+    animation: shake 0.15s ease-in-out;
 }
