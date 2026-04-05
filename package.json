@@ -20,17 +20,21 @@
         "dev:server": "cd server && npm run dev",
         "dev:all": "concurrently \"npm run dev:renderer\" \"npm run dev:server\""
     },
+    "author": "DRHATL95",
     "build": {
-        "appId": "com.typeracer.desktop",
-        "productName": "TypeRacer Desktop",
+        "appId": "com.typerace.app",
+        "productName": "TypeRace",
+        "extends": null,
         "directories": {
             "output": "release"
         },
         "files": [
             "build/**/*",
-            "dist/**/*",
-            "node_modules/**/*"
+            "dist/**/*"
         ],
+        "extraMetadata": {
+            "main": "dist/main.js"
+        },
         "mac": {
             "category": "public.app-category.games",
             "target": "dmg"
