@@ -7,6 +7,7 @@ import Lobby from './components/Lobby';
 import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
+import { fetchRandomPassage } from './utils/api';
 import { useMultiplayer } from './hooks/useMultiplayer';
 import {
     getBests, updateBest, getHistory, addHistoryEntry,
@@ -110,19 +111,24 @@ function App() {
         });
     }, []);
 
-    const startRace = useCallback(() => {
-        const newPassage = getRandomPassage(difficulty, category);
+    // Try API first, fall back to local data
+    const getPassage = useCallback(async (diff: Difficulty, cat: PassageCategory): Promise<TextPassage> => {
+        const fromApi = await fetchRandomPassage(diff, cat);
+        return fromApi || getRandomPassage(diff, cat);
+    }, []);
+
+    const startRace = useCallback(async () => {
+        const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
         setRaceResult(null);
         setIsNewBest(false);
         setGameState('racing');
-    }, [difficulty, category]);
+    }, [difficulty, category, getPassage]);
 
     const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number) => {
         setRaceResult(result);
         setLastFireStreak(fireStreak);
 
-        // Send to multiplayer server if connected
         if (mp.state === 'racing') {
             mp.sendFinished(result);
         }
@@ -145,24 +151,22 @@ function App() {
         const updatedStreak = incrementDailyStreak();
         setDailyStreak(updatedStreak);
 
-        // In solo mode, go to results immediately
         if (mp.state !== 'racing') {
             setGameState('results');
         }
-        // In multiplayer, we wait for the race-end event (handled by useEffect above)
     }, [difficulty, passage, mp]);
 
-    const restartRace = useCallback(() => {
+    const restartRace = useCallback(async () => {
         if (mp.state !== 'disconnected') {
             mp.requestRematch();
             return;
         }
         setRaceResult(null);
         setIsNewBest(false);
-        const newPassage = getRandomPassage(difficulty, category);
+        const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
         setGameState('racing');
-    }, [difficulty, category, mp]);
+    }, [difficulty, category, mp, getPassage]);
 
     const returnToWelcome = useCallback(() => {
         if (mp.state !== 'disconnected') {
@@ -174,10 +178,10 @@ function App() {
         setShowMPModal(false);
     }, [mp]);
 
-    const handleNewText = useCallback(() => {
-        const newPassage = getRandomPassage(difficulty, category);
+    const handleNewText = useCallback(async () => {
+        const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
-    }, [difficulty, category]);
+    }, [difficulty, category, getPassage]);
 
     const handleStartMultiplayer = useCallback(() => {
         setShowMPModal(true);

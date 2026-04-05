@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
-import { TextPassage, PlayerInfo, PlayerProgress, PlayerResult, RaceResult, Difficulty } from './types';
-import { getRandomPassage } from './passages';
+import { TextPassage, PlayerInfo, PlayerProgress, PlayerResult, RaceResult, Difficulty, PassageCategory } from './types';
+import { getRandomPassage } from './db';
 
 const PLAYER_COLORS = ['#00f0ff', '#ff0080', '#00ff88', '#ffaa00'];
 const MAX_PLAYERS = 4;
@@ -28,10 +28,16 @@ export class Room {
   private countdownTimer: NodeJS.Timeout | null = null;
   private finishTimer: NodeJS.Timeout | null = null;
 
-  constructor(code: string, difficulty: Difficulty) {
+  category: PassageCategory;
+
+  constructor(code: string, difficulty: Difficulty, category: PassageCategory = 'sentences') {
     this.code = code;
     this.difficulty = difficulty;
-    this.passage = getRandomPassage(difficulty);
+    this.category = category;
+    this.passage = getRandomPassage(difficulty, category) || {
+      id: 'fallback', title: 'Fallback', text: 'The quick brown fox jumps over the lazy dog.',
+      difficulty: 'easy', category: 'sentences'
+    };
   }
 
   addPlayer(ws: WebSocket, name: string): boolean {
@@ -176,7 +182,7 @@ export class Room {
   }
 
   private resetForRematch(): void {
-    this.passage = getRandomPassage(this.difficulty);
+    this.passage = getRandomPassage(this.difficulty, this.category) || this.passage;
     this.state = 'lobby';
     if (this.finishTimer) clearTimeout(this.finishTimer);
     this.finishTimer = null;

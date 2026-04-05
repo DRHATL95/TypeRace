@@ -8,3 +8,4 @@ release/
 .superpowers/
 server/dist/
 server/node_modules/
+*.db

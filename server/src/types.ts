@@ -44,7 +44,7 @@ export interface PlayerResult {
 
 // Client → Server
 export type ClientMessage =
-  | { type: 'create'; playerName: string; difficulty: Difficulty }
+  | { type: 'create'; playerName: string; difficulty: Difficulty; category?: PassageCategory }
   | { type: 'join'; roomCode: string; playerName: string }
   | { type: 'start' }
   | { type: 'progress'; currentIndex: number; errors: number; wpm: number }

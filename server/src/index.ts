@@ -2,20 +2,84 @@ import express from 'express';
 import http from 'http';
 import WebSocket, { WebSocketServer } from 'ws';
 import { Room } from './room';
-import { ClientMessage } from './types';
+import { ClientMessage, Difficulty, PassageCategory } from './types';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount } from './db';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const ROOM_TTL_MS = 10 * 60 * 1000;
 
+// Seed database on startup
+seedIfEmpty();
+
 const app = express();
+app.use(express.json());
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
 const rooms = new Map<string, Room>();
 const playerRooms = new Map<WebSocket, string>();
 
+// ── REST API ──────────────────────────────────────────────
+
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', rooms: rooms.size });
+  res.json({ status: 'ok', rooms: rooms.size, passages: getPassageCount() });
+});
+
+// CORS for client dev server
+app.use((_req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Methods', 'GET, POST');
+  next();
+});
+
+// List passages with optional filters
+app.get('/passages', (req, res) => {
+  const difficulty = req.query.difficulty as Difficulty | undefined;
+  const category = req.query.category as PassageCategory | undefined;
+  const passages = getPassages(difficulty, category);
+  res.json(passages);
+});
+
+// Get a random passage with optional filters
+app.get('/passages/random', (req, res) => {
+  const difficulty = req.query.difficulty as Difficulty | undefined;
+  const category = req.query.category as PassageCategory | undefined;
+  const passage = getRandomFromDB(difficulty, category);
+  if (!passage) {
+    res.status(404).json({ error: 'No passages found for the given filters' });
+    return;
+  }
+  res.json(passage);
+});
+
+// Add a new passage
+app.post('/passages', (req, res) => {
+  const { id, title, text, difficulty, category } = req.body;
+  if (!id || !title || !text || !difficulty || !category) {
+    res.status(400).json({ error: 'Missing required fields: id, title, text, difficulty, category' });
+    return;
+  }
+  const validDifficulties = ['easy', 'medium', 'hard'];
+  const validCategories = ['sentences', 'pop-culture', 'random-words'];
+  if (!validDifficulties.includes(difficulty)) {
+    res.status(400).json({ error: `difficulty must be one of: ${validDifficulties.join(', ')}` });
+    return;
+  }
+  if (!validCategories.includes(category)) {
+    res.status(400).json({ error: `category must be one of: ${validCategories.join(', ')}` });
+    return;
+  }
+  try {
+    insertPassage({ id, title, text, difficulty, category });
+    res.status(201).json({ id, title, text, difficulty, category });
+  } catch (err: any) {
+    if (err.message?.includes('UNIQUE constraint')) {
+      res.status(409).json({ error: 'A passage with that id already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to insert passage' });
+    }
+  }
 });
 
 function generateRoomCode(): string {
@@ -44,7 +108,7 @@ wss.on('connection', (ws: WebSocket) => {
     switch (msg.type) {
       case 'create': {
         const code = generateRoomCode();
-        const room = new Room(code, msg.difficulty);
+        const room = new Room(code, msg.difficulty, msg.category);
         rooms.set(code, room);
 
         if (!room.addPlayer(ws, msg.playerName)) {
