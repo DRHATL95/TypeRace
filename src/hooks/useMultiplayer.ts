@@ -25,7 +25,11 @@ export interface PlayerResult {
 
 export type MultiplayerState = 'disconnected' | 'lobby' | 'countdown' | 'racing' | 'finished';
 
-const WS_URL = `ws://${window.location.hostname}:3001`;
+// In production (Docker), WebSocket is on the same host/port.
+// In dev, the server is on port 3001.
+const WS_URL = process.env.NODE_ENV === 'production'
+  ? `ws://${window.location.host}`
+  : `ws://${window.location.hostname}:3001`;
 
 export function useMultiplayer() {
   const [state, setState] = useState<MultiplayerState>('disconnected');

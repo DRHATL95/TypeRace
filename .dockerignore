@@ -1,0 +1,10 @@
+node_modules
+server/node_modules
+server/dist
+build
+dist
+release
+.superpowers
+.git
+*.db
+.DS_Store

@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
@@ -81,6 +82,19 @@ app.post('/passages', (req, res) => {
     }
   }
 });
+
+// ── Serve React client in production ──────────────────────
+const clientDir = path.join(__dirname, '..', '..', 'client');
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(clientDir));
+  // SPA fallback — serve index.html for all non-API routes
+  app.get('*', (_req, res, next) => {
+    if (_req.path.startsWith('/passages') || _req.path.startsWith('/health')) {
+      return next();
+    }
+    res.sendFile(path.join(clientDir, 'index.html'));
+  });
+}
 
 function generateRoomCode(): string {
   const words = ['NEON', 'VOLT', 'RUSH', 'FLUX', 'BYTE', 'GLOW', 'TURBO', 'BLAZE'];

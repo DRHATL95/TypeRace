@@ -15,7 +15,6 @@ function createWindow(): void {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, '../assets/icon.png'),
@@ -124,8 +123,8 @@ app.on('activate', () => {
 });
 
 // Security: Prevent new window creation
-app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(() => {
+    return { action: 'deny' };
   });
 });

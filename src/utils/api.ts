@@ -1,6 +1,10 @@
 import { TextPassage, Difficulty, PassageCategory } from '../types/GameTypes';
 
-const API_BASE = `http://${window.location.hostname}:3001`;
+// In production (Docker), client is served from the same origin as the API.
+// In dev, the API is on port 3001.
+const API_BASE = process.env.NODE_ENV === 'production'
+  ? ''
+  : `http://${window.location.hostname}:3001`;
 
 export async function fetchRandomPassage(
   difficulty?: Difficulty,
