@@ -116,7 +116,7 @@ function App() {
         setRaceResult(null);
         setIsNewBest(false);
         setGameState('racing');
-    }, [difficulty]);
+    }, [difficulty, category]);
 
     const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number) => {
         setRaceResult(result);
@@ -162,7 +162,7 @@ function App() {
         const newPassage = getRandomPassage(difficulty, category);
         setPassage(newPassage);
         setGameState('racing');
-    }, [difficulty, mp]);
+    }, [difficulty, category, mp]);
 
     const returnToWelcome = useCallback(() => {
         if (mp.state !== 'disconnected') {
@@ -177,7 +177,7 @@ function App() {
     const handleNewText = useCallback(() => {
         const newPassage = getRandomPassage(difficulty, category);
         setPassage(newPassage);
-    }, [difficulty]);
+    }, [difficulty, category]);
 
     const handleStartMultiplayer = useCallback(() => {
         setShowMPModal(true);
@@ -240,6 +240,7 @@ function App() {
                     sessionStreak={sessionStreak}
                     onRaceComplete={handleRaceComplete}
                     onNewText={handleNewText}
+                    onHome={returnToWelcome}
                     multiplayerPlayers={isMultiplayerRacing ? mp.playerProgress : undefined}
                     onProgress={isMultiplayerRacing ? handleProgress : undefined}
                     autoStart={isMultiplayerRacing}

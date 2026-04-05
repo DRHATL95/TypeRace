@@ -25,6 +25,7 @@ interface TypeRacerProps {
     sessionStreak: number;
     onRaceComplete: (result: RaceResult, fireStreak: number) => void;
     onNewText: () => void;
+    onHome: () => void;
     multiplayerPlayers?: PlayerProgress[];
     onProgress?: (currentIndex: number, errors: number, wpm: number) => void;
     autoStart?: boolean;
@@ -36,6 +37,7 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
     sessionStreak,
     onRaceComplete,
     onNewText,
+    onHome,
     multiplayerPlayers,
     onProgress,
     autoStart,
@@ -353,6 +355,9 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
                 </div>
 
                 <div className="race-controls">
+                    <button onClick={onHome} className="restart-btn">
+                        [ home ]
+                    </button>
                     <button onClick={onNewText} className="restart-btn">
                         [ new text ]
                     </button>
