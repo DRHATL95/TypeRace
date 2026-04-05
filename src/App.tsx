@@ -193,7 +193,8 @@ function App() {
     }, [mp]);
 
     // Determine what to render
-    const isInMultiplayerLobby = mp.state === 'lobby' || mp.state === 'countdown';
+    const isInMultiplayerLobby = mp.state === 'lobby';
+    const isShowingMPCountdown = mp.state === 'countdown';
     const isMultiplayerRacing = mp.state === 'racing' && gameState === 'racing';
 
     return (
@@ -212,13 +213,14 @@ function App() {
                 />
             )}
 
-            {isInMultiplayerLobby && mp.roomCode && (
+            {(isInMultiplayerLobby || isShowingMPCountdown) && mp.roomCode && (
                 <Lobby
                     roomCode={mp.roomCode}
                     players={mp.players}
                     isCreator={mp.isCreator}
                     onStart={mp.startRace}
                     onLeave={() => { mp.leave(); setGameState('welcome'); }}
+                    countdownSeconds={isShowingMPCountdown ? mp.countdownSeconds : null}
                 />
             )}
 
@@ -231,6 +233,7 @@ function App() {
                     onNewText={handleNewText}
                     multiplayerPlayers={isMultiplayerRacing ? mp.playerProgress : undefined}
                     onProgress={isMultiplayerRacing ? handleProgress : undefined}
+                    autoStart={isMultiplayerRacing}
                 />
             )}
 

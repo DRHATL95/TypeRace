@@ -13,11 +13,19 @@ interface LobbyProps {
   isCreator: boolean;
   onStart: () => void;
   onLeave: () => void;
+  countdownSeconds?: number | null;
 }
 
-const Lobby: React.FC<LobbyProps> = ({ roomCode, players, isCreator, onStart, onLeave }) => {
+const Lobby: React.FC<LobbyProps> = ({ roomCode, players, isCreator, onStart, onLeave, countdownSeconds }) => {
   return (
     <div className="lobby-screen">
+      {countdownSeconds != null && countdownSeconds > 0 && (
+        <div className="lobby-countdown-overlay">
+          <div className="lobby-countdown-number">{countdownSeconds}</div>
+          <div className="lobby-countdown-text">Race starting...</div>
+        </div>
+      )}
+
       <div className="lobby-content">
         <div className="lobby-label">ROOM CODE</div>
         <div className="lobby-code">{roomCode}</div>
@@ -34,17 +42,19 @@ const Lobby: React.FC<LobbyProps> = ({ roomCode, players, isCreator, onStart, on
         </div>
 
         <div className="lobby-actions">
-          {isCreator && players.length >= 2 && (
+          {countdownSeconds == null && isCreator && players.length >= 2 && (
             <button className="lobby-btn lobby-start" onClick={onStart}>
               START RACE
             </button>
           )}
-          {isCreator && players.length < 2 && (
+          {countdownSeconds == null && isCreator && players.length < 2 && (
             <div className="lobby-waiting">Waiting for players...</div>
           )}
-          <button className="lobby-btn lobby-leave" onClick={onLeave}>
-            LEAVE
-          </button>
+          {countdownSeconds == null && (
+            <button className="lobby-btn lobby-leave" onClick={onLeave}>
+              LEAVE
+            </button>
+          )}
         </div>
       </div>
     </div>

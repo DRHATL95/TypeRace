@@ -120,3 +120,37 @@
     color: var(--text-ghost);
     animation: neonPulse 2s ease-in-out infinite;
 }
+
+/* ── Countdown overlay ─────────────────────────────────── */
+.lobby-countdown-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 10, 20, 0.92);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+}
+
+.lobby-countdown-number {
+    font-family: var(--font-display);
+    font-size: clamp(8rem, 20vw, 14rem);
+    font-weight: 700;
+    color: var(--cyan);
+    text-shadow:
+        0 0 40px var(--cyan-dim),
+        0 0 120px rgba(0, 240, 255, 0.15);
+    animation: glitch 0.5s ease-in-out infinite;
+    line-height: 1;
+}
+
+.lobby-countdown-text {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-ghost);
+    text-transform: uppercase;
+    letter-spacing: 0.3em;
+    margin-top: 1rem;
+}

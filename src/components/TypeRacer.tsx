@@ -27,6 +27,7 @@ interface TypeRacerProps {
     onNewText: () => void;
     multiplayerPlayers?: PlayerProgress[];
     onProgress?: (currentIndex: number, errors: number, wpm: number) => void;
+    autoStart?: boolean;
 }
 
 const TypeRacer: React.FC<TypeRacerProps> = ({
@@ -37,6 +38,7 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
     onNewText,
     multiplayerPlayers,
     onProgress,
+    autoStart,
 }) => {
     const [characters, setCharacters] = useState<CharacterStatus[]>([]);
     const [stats, setStats] = useState<TypingStats>({
@@ -95,6 +97,17 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         setFireActive(false);
         resetFire();
     }, [passage, resetFire]);
+
+    // Auto-start for multiplayer (server already did the countdown)
+    useEffect(() => {
+        if (autoStart && !isStarted) {
+            setIsStarted(true);
+            setStats(prev => ({ ...prev, startTime: Date.now() }));
+            setTimeout(() => {
+                if (inputRef.current) inputRef.current.focus();
+            }, 100);
+        }
+    }, [autoStart, isStarted]);
 
     useEffect(() => {
         if (showCountdown && countdown > 0) {
