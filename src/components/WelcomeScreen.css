@@ -98,6 +98,37 @@
     text-shadow: 0 0 8px rgba(255, 170, 0, 0.5);
 }
 
+/* ── Category picker ───────────────────────────────────── */
+.category-picker {
+    display: flex;
+    gap: 0.5rem;
+    animation: fadeUp 0.8s ease-out 0.18s both;
+}
+
+.cat-btn {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 0.4rem 1rem;
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    border-radius: 2px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    transition: all 0.2s ease;
+}
+
+.cat-btn.active {
+    border-color: var(--magenta);
+    color: var(--magenta);
+    background: rgba(255, 0, 128, 0.08);
+}
+
+.cat-btn:hover:not(.active) {
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
 /* ── Difficulty picker ─────────────────────────────────── */
 .difficulty-picker {
     display: flex;

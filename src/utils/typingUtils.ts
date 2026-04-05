@@ -39,15 +39,15 @@ export const parseTextToCharacters = (text: string): CharacterStatus[] => {
 
 export const getPerformanceMessage = (wpm: number, accuracy: number): string => {
   if (wpm >= 80 && accuracy >= 95) {
-    return "🏆 Excellent! You're a typing master!";
+    return "Flawless execution. You're in the zone.";
   } else if (wpm >= 60 && accuracy >= 90) {
-    return "⭐ Great job! You're a fast typist!";
+    return "Impressive velocity. Your fingers are flying.";
   } else if (wpm >= 40 && accuracy >= 85) {
-    return "👍 Good work! Keep practicing!";
+    return "Solid run. Push harder next time.";
   } else if (wpm >= 30 && accuracy >= 80) {
-    return "📚 Not bad! Practice makes perfect!";
+    return "Warming up. The speed will come with practice.";
   } else {
-    return "🎯 Keep practicing! You'll get there!";
+    return "Every race builds muscle memory. Go again.";
   }
 };
 

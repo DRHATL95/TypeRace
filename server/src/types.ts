@@ -1,11 +1,13 @@
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
+export type PassageCategory = 'sentences' | 'pop-culture' | 'random-words';
+
 export interface TextPassage {
   id: string;
   title: string;
   text: string;
   difficulty: Difficulty;
-  category: string;
+  category: PassageCategory;
 }
 
 export interface PlayerInfo {

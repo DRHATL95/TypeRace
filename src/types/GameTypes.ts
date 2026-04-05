@@ -15,7 +15,7 @@ export interface TextPassage {
   title: string;
   text: string;
   difficulty: 'easy' | 'medium' | 'hard';
-  category: string;
+  category: PassageCategory;
 }
 
 export interface TypingStats {
@@ -34,6 +34,8 @@ export interface CharacterStatus {
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard';
+
+export type PassageCategory = 'sentences' | 'pop-culture' | 'random-words';
 
 export type FireStreakTier = 'none' | 'fire' | 'blazing' | 'unstoppable';
 

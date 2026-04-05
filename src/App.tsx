@@ -5,13 +5,14 @@ import ResultsScreen from './components/ResultsScreen';
 import MultiplayerModal from './components/MultiplayerModal';
 import Lobby from './components/Lobby';
 import RaceTrack from './components/RaceTrack';
-import { GameState, RaceResult, Difficulty, TextPassage } from './types/GameTypes';
+import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
 import { useMultiplayer } from './hooks/useMultiplayer';
 import {
     getBests, updateBest, getHistory, addHistoryEntry,
     getDailyStreak, incrementDailyStreak,
     getDifficulty, setDifficulty,
+    getCategory, setCategory,
     isGhostEnabled, setGhostEnabled,
 } from './utils/storage';
 
@@ -29,7 +30,8 @@ function App() {
     const [gameState, setGameState] = useState<GameState>('welcome');
     const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
     const [difficulty, setDifficultyState] = useState<Difficulty>(getDifficulty());
-    const [passage, setPassage] = useState<TextPassage>(getRandomPassage(getDifficulty()));
+    const [category, setCategoryState] = useState<PassageCategory>(getCategory());
+    const [passage, setPassage] = useState<TextPassage>(getRandomPassage(getDifficulty(), getCategory()));
     const [ghostEnabled, setGhostEnabledState] = useState(isGhostEnabled());
     const [sessionStreak, setSessionStreak] = useState(0);
     const [isNewBest, setIsNewBest] = useState(false);
@@ -95,6 +97,11 @@ function App() {
         setDifficulty(d);
     }, []);
 
+    const handleCategoryChange = useCallback((c: PassageCategory) => {
+        setCategoryState(c);
+        setCategory(c);
+    }, []);
+
     const handleGhostToggle = useCallback(() => {
         setGhostEnabledState(prev => {
             const next = !prev;
@@ -104,7 +111,7 @@ function App() {
     }, []);
 
     const startRace = useCallback(() => {
-        const newPassage = getRandomPassage(difficulty);
+        const newPassage = getRandomPassage(difficulty, category);
         setPassage(newPassage);
         setRaceResult(null);
         setIsNewBest(false);
@@ -152,7 +159,7 @@ function App() {
         }
         setRaceResult(null);
         setIsNewBest(false);
-        const newPassage = getRandomPassage(difficulty);
+        const newPassage = getRandomPassage(difficulty, category);
         setPassage(newPassage);
         setGameState('racing');
     }, [difficulty, mp]);
@@ -168,7 +175,7 @@ function App() {
     }, [mp]);
 
     const handleNewText = useCallback(() => {
-        const newPassage = getRandomPassage(difficulty);
+        const newPassage = getRandomPassage(difficulty, category);
         setPassage(newPassage);
     }, [difficulty]);
 
@@ -210,6 +217,8 @@ function App() {
                     totalRaces={totalRaces}
                     ghostEnabled={ghostEnabled}
                     onGhostToggle={handleGhostToggle}
+                    category={category}
+                    onCategoryChange={handleCategoryChange}
                 />
             )}
 

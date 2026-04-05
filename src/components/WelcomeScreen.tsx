@@ -1,5 +1,5 @@
 import React from 'react';
-import { Difficulty, PersonalBests, DailyStreak } from '../types/GameTypes';
+import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -12,6 +12,8 @@ interface WelcomeScreenProps {
     totalRaces: number;
     ghostEnabled: boolean;
     onGhostToggle: () => void;
+    category: PassageCategory;
+    onCategoryChange: (c: PassageCategory) => void;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -24,9 +26,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     totalRaces,
     ghostEnabled,
     onGhostToggle,
+    category,
+    onCategoryChange,
 }) => {
     const currentBest = bests[difficulty];
     const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
+    const categories: { value: PassageCategory; label: string }[] = [
+        { value: 'sentences', label: 'SENTENCES' },
+        { value: 'pop-culture', label: 'POP CULTURE' },
+        { value: 'random-words', label: 'RANDOM WORDS' },
+    ];
 
     return (
         <div className="welcome-screen">
@@ -47,6 +56,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         <span>{dailyStreak.count} DAY STREAK</span>
                     </div>
                 )}
+
+                <div className="category-picker">
+                    {categories.map(c => (
+                        <button
+                            key={c.value}
+                            className={`cat-btn${c.value === category ? ' active' : ''}`}
+                            onClick={() => onCategoryChange(c.value)}
+                        >
+                            {c.label}
+                        </button>
+                    ))}
+                </div>
 
                 <div className="difficulty-picker">
                     {difficulties.map(d => (

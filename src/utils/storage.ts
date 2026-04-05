@@ -1,5 +1,6 @@
 import {
   Difficulty,
+  PassageCategory,
   PersonalBests,
   RaceHistoryEntry,
   DailyStreak,
@@ -40,6 +41,7 @@ const KEYS = {
   GHOST_ENABLED: 'typerace-ghost-enabled',
   MUTED:         'typerace-muted',
   PLAYER_NAME:   'typerace-player-name',
+  CATEGORY:      'typerace-category',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -169,4 +171,12 @@ export function getPlayerName(): string {
 
 export function setPlayerName(name: string): void {
   write(KEYS.PLAYER_NAME, name);
+}
+
+export function getCategory(): PassageCategory {
+  return read<PassageCategory>(KEYS.CATEGORY, 'sentences');
+}
+
+export function setCategory(c: PassageCategory): void {
+  write(KEYS.CATEGORY, c);
 }
