@@ -1,0 +1,46 @@
+.race-track {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 2rem;
+    background: var(--bg-raised);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.06);
+}
+
+.track-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.track-name {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    width: 80px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.track-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-surface);
+    border-radius: 1px;
+    overflow: hidden;
+}
+
+.track-fill {
+    height: 100%;
+    border-radius: 1px;
+    transition: width 0.2s ease-out;
+}
+
+.track-wpm {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    width: 55px;
+    text-align: left;
+}

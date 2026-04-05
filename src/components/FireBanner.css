@@ -1,0 +1,62 @@
+/* ── Fire Streak Banner ────────────────────────────────── */
+
+.fire-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    text-align: center;
+    animation: fireAppear 0.3s ease-out;
+}
+
+.fire-label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+.fire-count {
+    font-family: var(--font-mono);
+    font-size: 0.75em;
+    opacity: 0.6;
+    color: inherit;
+}
+
+/* ── Tier variants ─────────────────────────────────────── */
+
+.fire-fire .fire-label {
+    font-size: 1rem;
+    color: #ff6b00;
+    text-shadow: 0 0 10px rgba(255, 107, 0, 0.5);
+}
+
+.fire-blazing .fire-label {
+    font-size: 1.15rem;
+    color: #ff4400;
+    text-shadow: 0 0 16px rgba(255, 68, 0, 0.6), 0 0 32px rgba(255, 68, 0, 0.3);
+}
+
+.fire-unstoppable .fire-label {
+    font-size: 1.3rem;
+    color: #ff2200;
+    text-shadow: 0 0 20px rgba(255, 34, 0, 0.7), 0 0 40px rgba(255, 34, 0, 0.4), 0 0 60px rgba(255, 34, 0, 0.2);
+    animation: firePulse 0.5s ease-in-out infinite;
+}
+
+@keyframes fireAppear {
+    from {
+        opacity: 0;
+        transform: scale(0.8) translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes firePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.85; transform: scale(1.05); }
+}

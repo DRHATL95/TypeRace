@@ -5,3 +5,7 @@ release/
 .env
 .env.local
 .DS_Store
+.superpowers/
+server/dist/
+server/node_modules/
+*.db

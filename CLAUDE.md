@@ -11,6 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Build Electron main only:** `npm run build:main` — compiles `electron/` via `tsconfig.main.json` into `dist/`
 - **Package desktop:** `npm run package` (or `package:mac`, `package:win`, `package:linux`)
 
+- **Dev (all):** `npm run dev:all` — starts React dev server + multiplayer WebSocket server
+- **Dev (server only):** `npm run dev:server` — starts the WebSocket server on port 3001
+
 No test runner is configured.
 
 ## Architecture
@@ -39,6 +42,19 @@ App is driven by a simple `GameState` type (`'welcome' | 'racing' | 'results'`) 
 ### Styling
 
 Pure CSS with glass-morphism design. Each component has a co-located `.css` file. No CSS framework or preprocessor.
+
+### Multiplayer
+
+WebSocket server in `server/` (Express + `ws`). In-memory room state, no database. Players join rooms via short codes, race the same passage simultaneously. Client hook in `src/hooks/useMultiplayer.ts` manages connection and state.
+
+### Effects & Competitive Systems
+
+- `src/utils/audioEngine.ts` — synthesized typing sounds via Web Audio API
+- `src/utils/particleBurst.ts` — canvas particle system for race completion
+- `src/hooks/useSpeedTier.ts` — WPM-reactive visual tiers (normal → overdrive)
+- `src/hooks/useFireStreak.ts` — combo system tracking consecutive correct chars
+- `src/hooks/useGhost.ts` — ghost racing (replay personal best timing)
+- `src/utils/storage.ts` — all localStorage persistence (bests, history, streaks, preferences)
 
 ### Electron IPC
 

@@ -1,87 +1,85 @@
-import { app, BrowserWindow, Menu } from 'electron';
+import { app, BrowserWindow, Menu, shell } from 'electron';
 import * as path from 'path';
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = !app.isPackaged;
 
 let mainWindow: BrowserWindow;
 
 function createWindow(): void {
-  // Create the browser window
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1400,
+    height: 900,
+    minWidth: 900,
+    minHeight: 650,
+    backgroundColor: '#060a14',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
     },
-    icon: path.join(__dirname, '../assets/icon.png'),
     titleBarStyle: 'hiddenInset',
-    show: false
+    trafficLightPosition: { x: 16, y: 16 },
+    show: false,
+    frame: process.platform === 'darwin' ? true : false,
+    titleBarOverlay: process.platform !== 'darwin' ? {
+      color: '#060a14',
+      symbolColor: '#7a8bb5',
+      height: 36,
+    } : undefined,
   });
 
-  // Load the app
-  const startUrl = isDev 
-    ? 'http://localhost:3000' 
+  const startUrl = isDev
+    ? 'http://localhost:3000'
     : `file://${path.join(__dirname, '../build/index.html')}`;
-  
+
   mainWindow.loadURL(startUrl);
 
-  // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
-    // Open DevTools in development
     if (isDev) {
-      mainWindow.webContents.openDevTools();
+      mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
   });
 
-  // Handle window closed
   mainWindow.on('closed', () => {
     mainWindow = null as any;
   });
 
-  // Create application menu
   createMenu();
 }
 
 function createMenu(): void {
-  const template: any[] = [
+  const isMac = process.platform === 'darwin';
+
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac ? [{
+      label: 'TypeRace',
+      submenu: [
+        { role: 'about' as const },
+        { type: 'separator' as const },
+        { role: 'hide' as const },
+        { role: 'hideOthers' as const },
+        { role: 'unhide' as const },
+        { type: 'separator' as const },
+        { role: 'quit' as const },
+      ],
+    }] : []),
     {
-      label: 'File',
+      label: 'Race',
       submenu: [
         {
           label: 'New Race',
           accelerator: 'CmdOrCtrl+N',
-          click: () => {
-            mainWindow.webContents.send('new-race');
-          }
+          click: () => mainWindow.webContents.send('new-race'),
+        },
+        {
+          label: 'Restart',
+          accelerator: 'CmdOrCtrl+R',
+          click: () => mainWindow.webContents.send('restart-race'),
         },
         { type: 'separator' },
-        {
-          label: 'Quit',
-          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-          click: () => {
-            app.quit();
-          }
-        }
-      ]
-    },
-    {
-      label: 'Game',
-      submenu: [
-        {
-          label: 'Restart Race',
-          accelerator: 'CmdOrCtrl+R',
-          click: () => {
-            mainWindow.webContents.send('restart-race');
-          }
-        }
-      ]
+        ...(!isMac ? [{ role: 'quit' as const }] : []),
+      ],
     },
     {
       label: 'View',
@@ -89,26 +87,36 @@ function createMenu(): void {
         {
           label: 'Toggle Fullscreen',
           accelerator: 'F11',
-          click: () => {
-            mainWindow.setFullScreen(!mainWindow.isFullScreen());
-          }
+          click: () => mainWindow.setFullScreen(!mainWindow.isFullScreen()),
         },
+        { type: 'separator' },
         {
-          label: 'Toggle Developer Tools',
+          label: 'Developer Tools',
           accelerator: 'F12',
-          click: () => {
-            mainWindow.webContents.toggleDevTools();
-          }
-        }
-      ]
-    }
+          click: () => mainWindow.webContents.toggleDevTools(),
+          visible: isDev,
+        },
+        { role: 'reload', visible: isDev },
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        { role: 'minimize' },
+        { role: 'zoom' },
+        ...(isMac ? [
+          { type: 'separator' as const },
+          { role: 'front' as const },
+        ] : [
+          { role: 'close' as const },
+        ]),
+      ],
+    },
   ];
 
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-// App event handlers
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
@@ -123,9 +131,12 @@ app.on('activate', () => {
   }
 });
 
-// Security: Prevent new window creation
-app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    // Open external links in default browser
+    if (url.startsWith('http')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
   });
 });

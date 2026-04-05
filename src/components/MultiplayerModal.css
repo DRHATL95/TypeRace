@@ -1,0 +1,133 @@
+.mp-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(6, 10, 20, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    backdrop-filter: blur(6px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.mp-modal {
+    background: var(--bg-raised);
+    border: 1px solid rgba(0, 240, 255, 0.1);
+    border-radius: 2px;
+    padding: 2rem;
+    width: 100%;
+    max-width: 380px;
+    animation: fadeUp 0.3s ease-out;
+}
+
+.mp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.mp-title {
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--magenta);
+    letter-spacing: 0.2em;
+}
+
+.mp-close {
+    background: transparent;
+    border: none;
+    color: var(--text-ghost);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.mp-close:hover {
+    color: var(--text-secondary);
+}
+
+.mp-field {
+    margin-bottom: 1.25rem;
+}
+
+.mp-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.15em;
+    margin-bottom: 0.4rem;
+}
+
+.mp-input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    border: 1px solid var(--text-ghost);
+    border-radius: 2px;
+    outline: none;
+    caret-color: var(--cyan);
+    transition: border-color 0.2s ease;
+}
+
+.mp-input:focus {
+    border-color: var(--cyan);
+}
+
+.mp-input-code {
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    text-align: center;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.mp-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.mp-btn {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    padding: 0.75rem 1rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mp-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.mp-btn-create {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+}
+
+.mp-btn-create:hover:not(:disabled) {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: var(--glow-cyan);
+}
+
+.mp-btn-join {
+    background: transparent;
+    color: var(--magenta);
+    border: 1px solid var(--magenta);
+}
+
+.mp-btn-join:hover:not(:disabled) {
+    background: rgba(255, 0, 128, 0.1);
+    box-shadow: var(--glow-magenta);
+}
