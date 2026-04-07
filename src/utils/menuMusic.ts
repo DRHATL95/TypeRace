@@ -38,12 +38,22 @@ function fadeIn(): void {
   }, FADE_INTERVAL_MS);
 }
 
+function removeGestureListeners(): void {
+  document.removeEventListener('pointerdown', handleUserGesture);
+  document.removeEventListener('keydown', handleUserGesture);
+}
+
 function handleUserGesture(): void {
   if (!pendingStart) return;
   pendingStart = false;
-  document.removeEventListener('click', handleUserGesture);
-  document.removeEventListener('keydown', handleUserGesture);
-  startMenuMusic();
+  removeGestureListeners();
+
+  const el = ensureAudio();
+  el.volume = 0;
+  el.play().then(() => {
+    // Only fade in if we haven't been stopped in the meantime
+    if (!audio?.paused) fadeIn();
+  }).catch(() => {});
 }
 
 export function startMenuMusic(): void {
@@ -57,15 +67,14 @@ export function startMenuMusic(): void {
   }).catch(() => {
     // Browser blocked autoplay — retry on first user interaction
     pendingStart = true;
-    document.addEventListener('click', handleUserGesture, { once: true });
-    document.addEventListener('keydown', handleUserGesture, { once: true });
+    document.addEventListener('pointerdown', handleUserGesture);
+    document.addEventListener('keydown', handleUserGesture);
   });
 }
 
 export function stopMenuMusic(): void {
   pendingStart = false;
-  document.removeEventListener('click', handleUserGesture);
-  document.removeEventListener('keydown', handleUserGesture);
+  removeGestureListeners();
   if (!audio || audio.paused) return;
 
   clearFade();
