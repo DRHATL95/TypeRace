@@ -19,6 +19,12 @@ interface Player {
 export type RoomState = 'lobby' | 'countdown' | 'racing' | 'finished';
 
 export class Room {
+  private static readonly CATEGORIES: PassageCategory[] = ['sentences', 'pop-culture', 'random-words'];
+
+  private static randomCategory(): PassageCategory {
+    return Room.CATEGORIES[Math.floor(Math.random() * Room.CATEGORIES.length)];
+  }
+
   code: string;
   difficulty: Difficulty;
   passage: TextPassage;
@@ -30,11 +36,11 @@ export class Room {
 
   category: PassageCategory;
 
-  constructor(code: string, difficulty: Difficulty, category: PassageCategory = 'sentences') {
+  constructor(code: string, difficulty: Difficulty, _category: PassageCategory = 'sentences') {
     this.code = code;
     this.difficulty = difficulty;
-    this.category = category;
-    this.passage = getRandomPassage(difficulty, category) || {
+    this.category = Room.randomCategory();
+    this.passage = getRandomPassage(difficulty, this.category) || {
       id: 'fallback', title: 'Fallback', text: 'The quick brown fox jumps over the lazy dog.',
       difficulty: 'easy', category: 'sentences'
     };
@@ -102,7 +108,7 @@ export class Room {
       } else {
         if (this.countdownTimer) clearInterval(this.countdownTimer);
         this.state = 'racing';
-        this.broadcast({ type: 'race-start', passage: this.passage });
+        this.broadcast({ type: 'race-start', passage: this.passage, category: this.category });
       }
     }, 1000);
   }
@@ -182,6 +188,7 @@ export class Room {
   }
 
   private resetForRematch(): void {
+    this.category = Room.randomCategory();
     this.passage = getRandomPassage(this.difficulty, this.category) || this.passage;
     this.state = 'lobby';
     if (this.finishTimer) clearTimeout(this.finishTimer);

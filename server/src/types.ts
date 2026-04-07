@@ -58,7 +58,7 @@ export type ServerMessage =
   | { type: 'player-joined'; players: PlayerInfo[] }
   | { type: 'player-left'; players: PlayerInfo[] }
   | { type: 'countdown'; seconds: number }
-  | { type: 'race-start'; passage: TextPassage }
+  | { type: 'race-start'; passage: TextPassage; category: PassageCategory }
   | { type: 'progress-update'; players: PlayerProgress[] }
   | { type: 'player-finished'; playerName: string; result: RaceResult }
   | { type: 'race-end'; results: PlayerResult[] }
