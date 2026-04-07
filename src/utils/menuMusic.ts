@@ -40,6 +40,7 @@ function fadeIn(): void {
 
 function removeGestureListeners(): void {
   document.removeEventListener('pointerdown', handleUserGesture);
+  document.removeEventListener('click', handleUserGesture);
   document.removeEventListener('keydown', handleUserGesture);
 }
 
@@ -66,8 +67,10 @@ export function startMenuMusic(): void {
     fadeIn();
   }).catch(() => {
     // Browser blocked autoplay — retry on first user interaction
+    // Use both pointerdown (Chrome) and click (Firefox) for broad compatibility
     pendingStart = true;
     document.addEventListener('pointerdown', handleUserGesture);
+    document.addEventListener('click', handleUserGesture);
     document.addEventListener('keydown', handleUserGesture);
   });
 }
