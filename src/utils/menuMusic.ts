@@ -23,16 +23,10 @@ function clearFade(): void {
   }
 }
 
-export function startMenuMusic(): void {
-  if (isMuted()) return;
+let pendingStart = false;
+
+function fadeIn(): void {
   const el = ensureAudio();
-  if (!el.paused) return;
-
-  el.volume = 0;
-  el.play().catch(() => {
-    // Browser blocked autoplay — will start on next user interaction
-  });
-
   clearFade();
   fadeInterval = setInterval(() => {
     if (el.volume < TARGET_VOLUME - FADE_STEP) {
@@ -44,7 +38,34 @@ export function startMenuMusic(): void {
   }, FADE_INTERVAL_MS);
 }
 
+function handleUserGesture(): void {
+  if (!pendingStart) return;
+  pendingStart = false;
+  document.removeEventListener('click', handleUserGesture);
+  document.removeEventListener('keydown', handleUserGesture);
+  startMenuMusic();
+}
+
+export function startMenuMusic(): void {
+  if (isMuted()) return;
+  const el = ensureAudio();
+  if (!el.paused) return;
+
+  el.volume = 0;
+  el.play().then(() => {
+    fadeIn();
+  }).catch(() => {
+    // Browser blocked autoplay — retry on first user interaction
+    pendingStart = true;
+    document.addEventListener('click', handleUserGesture, { once: true });
+    document.addEventListener('keydown', handleUserGesture, { once: true });
+  });
+}
+
 export function stopMenuMusic(): void {
+  pendingStart = false;
+  document.removeEventListener('click', handleUserGesture);
+  document.removeEventListener('keydown', handleUserGesture);
   if (!audio || audio.paused) return;
 
   clearFade();
