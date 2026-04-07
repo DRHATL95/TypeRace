@@ -67,7 +67,8 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
 
     const currentWPM = (() => {
         if (!isStarted || stats.startTime === 0) return 0;
-        const timeElapsed = (Date.now() - stats.startTime) / 1000;
+        const now = stats.isComplete ? (stats.endTime || Date.now()) : Date.now();
+        const timeElapsed = (now - stats.startTime) / 1000;
         if (timeElapsed === 0) return 0;
         return Math.round(((stats.charactersTyped / 5) / (timeElapsed / 60)) * 100) / 100;
     })();
@@ -225,13 +226,19 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
             playFanfare();
             saveGhost();
 
+            const endTime = Date.now();
+            const finalErrors = isCorrect ? stats.errors : stats.errors + 1;
+
             const finalStats: TypingStats = {
                 ...stats,
-                endTime: Date.now(),
+                endTime,
                 charactersTyped: value.length,
-                errors: isCorrect ? stats.errors : stats.errors + 1,
+                errors: finalErrors,
                 isComplete: true
             };
+
+            // Freeze stats so currentWPM stops declining while waiting for others
+            setStats(finalStats);
 
             const result = calculateRaceResult(finalStats, passage.text.length);
 
