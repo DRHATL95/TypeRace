@@ -21,6 +21,23 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS race_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    player_name TEXT NOT NULL,
+    wpm REAL NOT NULL,
+    accuracy REAL NOT NULL,
+    fire_streak INTEGER NOT NULL DEFAULT 0,
+    difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
+    category TEXT NOT NULL CHECK(category IN ('sentences', 'pop-culture', 'random-words')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )
+`);
+
+db.exec(`
+  CREATE INDEX IF NOT EXISTS idx_results_date ON race_results(created_at)
+`);
+
 // ── Queries ───────────────────────────────────────────────
 
 const stmtAll = db.prepare(`
@@ -44,6 +61,27 @@ const stmtInsert = db.prepare(`
 `);
 
 const stmtCount = db.prepare(`SELECT COUNT(*) as count FROM passages`);
+
+const stmtInsertResult = db.prepare(`
+  INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category)
+  VALUES (@player_name, @wpm, @accuracy, @fire_streak, @difficulty, @category)
+`);
+
+const stmtTopWpmToday = db.prepare(`
+  SELECT player_name, wpm, accuracy, fire_streak
+  FROM race_results
+  WHERE date(created_at) = date('now')
+  ORDER BY wpm DESC
+  LIMIT 5
+`);
+
+const stmtTopStreakToday = db.prepare(`
+  SELECT player_name, wpm, accuracy, fire_streak
+  FROM race_results
+  WHERE date(created_at) = date('now')
+  ORDER BY fire_streak DESC
+  LIMIT 5
+`);
 
 // ── Public API ────────────────────────────────────────────
 
@@ -69,6 +107,31 @@ export function insertPassage(passage: TextPassage): void {
 export function getPassageCount(): number {
   const row = stmtCount.get() as { count: number };
   return row.count;
+}
+
+export interface LeaderboardEntry {
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+}
+
+export function insertRaceResult(result: {
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+}): number {
+  const info = stmtInsertResult.run(result);
+  return info.lastInsertRowid as number;
+}
+
+export function getTodayLeaderboard(): { topWpm: LeaderboardEntry[]; topStreak: LeaderboardEntry[] } {
+  const topWpm = stmtTopWpmToday.all() as LeaderboardEntry[];
+  const topStreak = stmtTopStreakToday.all() as LeaderboardEntry[];
+  return { topWpm, topStreak };
 }
 
 // ── Seed ──────────────────────────────────────────────────

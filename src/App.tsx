@@ -7,7 +7,7 @@ import Lobby from './components/Lobby';
 import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
-import { fetchRandomPassage } from './utils/api';
+import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard } from './utils/api';
 import { useMultiplayer } from './hooks/useMultiplayer';
 import {
     getBests, updateBest, getHistory, addHistoryEntry,
@@ -15,6 +15,7 @@ import {
     getDifficulty, setDifficulty,
     getCategory, setCategory,
     isGhostEnabled, setGhostEnabled,
+    getPlayerName, getTodaysBest,
 } from './utils/storage';
 
 declare global {
@@ -41,6 +42,8 @@ function App() {
     const [dailyStreak, setDailyStreak] = useState(getDailyStreak());
     const [totalRaces, setTotalRaces] = useState(getHistory().length);
     const [showMPModal, setShowMPModal] = useState(false);
+    const [todaysBest, setTodaysBest] = useState(getTodaysBest());
+    const [leaderboard, setLeaderboard] = useState<TodayLeaderboard | null>(null);
 
     const mp = useMultiplayer();
 
@@ -92,6 +95,14 @@ function App() {
             setGameState('results');
         }
     }, [mp.state, raceResult]);
+
+    // Refresh today's best and leaderboard when returning to welcome screen
+    useEffect(() => {
+        if (gameState === 'welcome') {
+            setTodaysBest(getTodaysBest());
+            fetchTodayLeaderboard().then(lb => setLeaderboard(lb));
+        }
+    }, [gameState]);
 
     const handleDifficultyChange = useCallback((d: Difficulty) => {
         setDifficultyState(d);
@@ -146,6 +157,19 @@ function App() {
             fireStreak,
         });
         setTotalRaces(prev => prev + 1);
+
+        // Submit to server leaderboard (fire-and-forget)
+        const playerName = getPlayerName();
+        if (playerName) {
+            submitRaceResult({
+                playerName,
+                wpm: result.wpm,
+                accuracy: result.accuracy,
+                fireStreak: fireStreak,
+                difficulty,
+                category,
+            });
+        }
 
         setSessionStreak(prev => prev + 1);
         const updatedStreak = incrementDailyStreak();
@@ -223,6 +247,8 @@ function App() {
                     onGhostToggle={handleGhostToggle}
                     category={category}
                     onCategoryChange={handleCategoryChange}
+                    todaysBest={todaysBest ? { wpm: todaysBest.wpm, accuracy: todaysBest.accuracy, fireStreak: todaysBest.fireStreak } : null}
+                    leaderboard={leaderboard}
                 />
             )}
 

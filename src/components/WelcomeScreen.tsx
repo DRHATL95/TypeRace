@@ -1,5 +1,6 @@
 import React from 'react';
 import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
+import { TodayLeaderboard } from '../utils/api';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -14,6 +15,8 @@ interface WelcomeScreenProps {
     onGhostToggle: () => void;
     category: PassageCategory;
     onCategoryChange: (c: PassageCategory) => void;
+    todaysBest: { wpm: number; accuracy: number; fireStreak: number } | null;
+    leaderboard: TodayLeaderboard | null;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -28,6 +31,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onGhostToggle,
     category,
     onCategoryChange,
+    todaysBest,
+    leaderboard,
 }) => {
     const currentBest = bests[difficulty];
     const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
@@ -104,6 +109,45 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                     <div className="strip-item">
                         <span className="strip-value">{totalRaces}</span>
                         <span className="strip-label">Races</span>
+                    </div>
+                </div>
+
+                <div className="today-champions">
+                    <div className="champions-label">TODAY'S CHAMPIONS</div>
+                    <div className="champions-columns">
+                        <div className="champions-col">
+                            <div className="col-header">YOUR BEST</div>
+                            {todaysBest ? (
+                                <div className="personal-today">
+                                    <span className="pt-wpm">{todaysBest.wpm} WPM</span>
+                                    <span className="pt-acc">{todaysBest.accuracy}%</span>
+                                    {todaysBest.fireStreak > 0 && (
+                                        <span className="pt-streak">{todaysBest.fireStreak} streak</span>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="no-races-today">No races today</div>
+                            )}
+                        </div>
+                        <div className="champions-divider" />
+                        <div className="champions-col">
+                            <div className="col-header">GLOBAL TOP 5</div>
+                            {leaderboard && leaderboard.topWpm.length > 0 ? (
+                                <div className="global-top">
+                                    {leaderboard.topWpm.map((entry, i) => (
+                                        <div key={i} className="lb-entry">
+                                            <span className="lb-rank">#{i + 1}</span>
+                                            <span className="lb-name">{entry.player_name}</span>
+                                            <span className="lb-wpm">{entry.wpm}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="no-races-today">
+                                    {leaderboard === null ? 'Leaderboard unavailable' : 'No races today'}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
 

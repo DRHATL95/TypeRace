@@ -39,3 +39,44 @@ export async function fetchPassages(
     return [];
   }
 }
+
+export interface LeaderboardEntry {
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+}
+
+export interface TodayLeaderboard {
+  topWpm: LeaderboardEntry[];
+  topStreak: LeaderboardEntry[];
+}
+
+export async function submitRaceResult(data: {
+  playerName: string;
+  wpm: number;
+  accuracy: number;
+  fireStreak: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+}): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/results`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch {
+    // Fire-and-forget — don't block UI
+  }
+}
+
+export async function fetchTodayLeaderboard(): Promise<TodayLeaderboard | null> {
+  try {
+    const res = await fetch(`${API_BASE}/leaderboard/today`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}

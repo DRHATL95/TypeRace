@@ -362,6 +362,109 @@
     border-right-width: 2px;
 }
 
+/* ── Today's Champions ────────────────────────────────── */
+.today-champions {
+    margin: 1.5rem 0 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+}
+
+.champions-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+    text-align: center;
+    margin-bottom: 0.75rem;
+    text-transform: uppercase;
+}
+
+.champions-columns {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.champions-col {
+    flex: 1;
+    min-width: 0;
+}
+
+.champions-divider {
+    width: 1px;
+    align-self: stretch;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.col-header {
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--cyan);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.personal-today {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.pt-wpm {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.pt-acc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.pt-streak {
+    font-size: 0.75rem;
+    color: var(--amber);
+}
+
+.no-races-today {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+.global-top {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.lb-entry {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+}
+
+.lb-rank {
+    color: var(--text-secondary);
+    width: 1.5em;
+}
+
+.lb-name {
+    flex: 1;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.lb-wpm {
+    color: var(--cyan);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
 /* ── Responsive ────────────────────────────────────────── */
 @media (max-width: 640px) {
     .welcome-content {

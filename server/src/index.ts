@@ -4,7 +4,7 @@ import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
-import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount } from './db';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard } from './db';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const ROOM_TTL_MS = 10 * 60 * 1000;
@@ -83,13 +83,45 @@ app.post('/passages', (req, res) => {
   }
 });
 
+// Submit a race result
+app.post('/results', (req, res) => {
+  const { playerName, wpm, accuracy, fireStreak, difficulty, category } = req.body;
+  if (!playerName || wpm == null || accuracy == null || !difficulty || !category) {
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  try {
+    const id = insertRaceResult({
+      player_name: playerName,
+      wpm,
+      accuracy,
+      fire_streak: fireStreak || 0,
+      difficulty,
+      category,
+    });
+    res.status(201).json({ id });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to save result' });
+  }
+});
+
+// Get today's leaderboard
+app.get('/leaderboard/today', (_req, res) => {
+  try {
+    const leaderboard = getTodayLeaderboard();
+    res.json(leaderboard);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
 // ── Serve React client in production ──────────────────────
 const clientDir = path.join(__dirname, '..', '..', 'client');
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(clientDir));
   // SPA fallback — serve index.html for all non-API routes
   app.get('*', (_req, res, next) => {
-    if (_req.path.startsWith('/passages') || _req.path.startsWith('/health')) {
+    if (_req.path.startsWith('/passages') || _req.path.startsWith('/health') || _req.path.startsWith('/results') || _req.path.startsWith('/leaderboard')) {
       return next();
     }
     res.sendFile(path.join(clientDir, 'index.html'));

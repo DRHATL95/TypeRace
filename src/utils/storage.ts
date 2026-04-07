@@ -180,3 +180,18 @@ export function getCategory(): PassageCategory {
 export function setCategory(c: PassageCategory): void {
   write(KEYS.CATEGORY, c);
 }
+
+// ---------------------------------------------------------------------------
+// Today's Best (derived from race history)
+// ---------------------------------------------------------------------------
+
+export function getTodaysBest(): RaceHistoryEntry | null {
+  const history = getHistory();
+  const today = todayString();
+  const todaysRaces = history.filter(h => {
+    const d = new Date(h.timestamp).toISOString().slice(0, 10);
+    return d === today;
+  });
+  if (todaysRaces.length === 0) return null;
+  return todaysRaces.reduce((best, race) => race.wpm > best.wpm ? race : best);
+}
