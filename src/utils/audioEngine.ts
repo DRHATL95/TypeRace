@@ -1,4 +1,5 @@
 import { isMuted, setMuted as persistMute } from './storage';
+import { setMenuMusicMuted } from './menuMusic';
 
 let audioCtx: AudioContext | null = null;
 
@@ -18,6 +19,7 @@ export function getMuted(): boolean {
 export function toggleMute(): boolean {
   muted = !muted;
   persistMute(muted);
+  setMenuMusicMuted(muted);
   return muted;
 }
 

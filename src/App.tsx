@@ -9,6 +9,7 @@ import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from 
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard } from './utils/api';
 import { useMultiplayer } from './hooks/useMultiplayer';
+import { stopMenuMusic } from './utils/menuMusic';
 import {
     getBests, updateBest, getHistory, addHistoryEntry,
     getDailyStreak, incrementDailyStreak,
@@ -82,6 +83,7 @@ function App() {
     // When multiplayer race starts, switch to racing state with the server's passage
     useEffect(() => {
         if (mp.state === 'racing' && mp.passage) {
+            stopMenuMusic();
             setPassage(mp.passage);
             setRaceResult(null);
             setIsNewBest(false);
@@ -129,6 +131,7 @@ function App() {
     }, []);
 
     const startRace = useCallback(async () => {
+        stopMenuMusic();
         const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
         setRaceResult(null);

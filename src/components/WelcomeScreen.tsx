@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
 import { TodayLeaderboard } from '../utils/api';
+import { startMenuMusic, stopMenuMusic } from '../utils/menuMusic';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -34,6 +35,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     todaysBest,
     leaderboard,
 }) => {
+    useEffect(() => {
+        startMenuMusic();
+        return () => { stopMenuMusic(); };
+    }, []);
+
     const currentBest = bests[difficulty];
     const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
     const categories: { value: PassageCategory; label: string }[] = [
