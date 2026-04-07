@@ -57,21 +57,33 @@ function handleUserGesture(): void {
   }).catch(() => {});
 }
 
+function addGestureListeners(): void {
+  document.addEventListener('pointerdown', handleUserGesture);
+  document.addEventListener('click', handleUserGesture);
+  document.addEventListener('keydown', handleUserGesture);
+}
+
 export function startMenuMusic(): void {
   if (isMuted()) return;
   const el = ensureAudio();
   if (!el.paused) return;
 
   el.volume = 0;
+
+  // Register gesture listeners BEFORE play() — some browsers (Firefox)
+  // silently block autoplay without rejecting the promise, so we can't
+  // rely on .catch() to set up the fallback.
+  pendingStart = true;
+  addGestureListeners();
+
   el.play().then(() => {
+    // Autoplay succeeded — cancel gesture fallback
+    if (!pendingStart) return; // gesture listener already handled it
+    pendingStart = false;
+    removeGestureListeners();
     fadeIn();
   }).catch(() => {
-    // Browser blocked autoplay — retry on first user interaction
-    // Use both pointerdown (Chrome) and click (Firefox) for broad compatibility
-    pendingStart = true;
-    document.addEventListener('pointerdown', handleUserGesture);
-    document.addEventListener('click', handleUserGesture);
-    document.addEventListener('keydown', handleUserGesture);
+    // Explicitly blocked — gesture listeners already active, nothing to do
   });
 }
 
