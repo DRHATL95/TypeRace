@@ -40,6 +40,8 @@ export function useMultiplayer() {
   const [passage, setPassage] = useState<TextPassage | null>(null);
   const [isCreator, setIsCreator] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rematchVoters, setRematchVoters] = useState<string[]>([]);
+  const [rematchSecondsLeft, setRematchSecondsLeft] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -79,6 +81,8 @@ export function useMultiplayer() {
           case 'race-start':
             setState('racing');
             setPassage(msg.passage);
+            setRematchVoters([]);
+            setRematchSecondsLeft(null);
             break;
           case 'progress-update':
             setPlayerProgress(msg.players);
@@ -90,6 +94,11 @@ export function useMultiplayer() {
             setRaceResults(msg.results);
             break;
           case 'rematch-request':
+            setRematchVoters(msg.accepted);
+            break;
+          case 'rematch-countdown':
+            setRematchVoters(msg.voters);
+            setRematchSecondsLeft(msg.secondsLeft);
             break;
           case 'error':
             setError(msg.message);
@@ -162,6 +171,7 @@ export function useMultiplayer() {
   return {
     state, roomCode, players, playerProgress, raceResults,
     countdownSeconds, passage, isCreator, error,
+    rematchVoters, rematchSecondsLeft,
     createRoom, joinRoom, startRace: startRaceMP,
     sendProgress, sendFinished, requestRematch, leave,
   };

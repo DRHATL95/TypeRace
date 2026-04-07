@@ -20,6 +20,8 @@ interface ResultsScreenProps {
     onNewRace: () => void;
     podium?: PlayerResult[];
     onLeaveRoom?: () => void;
+    rematchVoters?: string[];
+    rematchSecondsLeft?: number | null;
 }
 
 const getRank = (wpm: number, accuracy: number) => {
@@ -37,7 +39,7 @@ function getFireTierLabel(streak: number): string {
     return '';
 }
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom }) => {
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft }) => {
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
     const rank = getRank(result.wpm, result.accuracy);
     const history = getHistory();
@@ -72,6 +74,26 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
                                 <span className="podium-acc">{p.result.accuracy}%</span>
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {podium && rematchVoters !== undefined && (
+                    <div className="rematch-status">
+                        {rematchSecondsLeft != null && (
+                            <div className="rematch-timer">
+                                Next race in <span className="rematch-seconds">{rematchSecondsLeft}s</span>
+                            </div>
+                        )}
+                        <div className="rematch-voters">
+                            {podium.map(p => (
+                                <div key={p.name} className="rematch-voter" style={{ borderColor: p.color }}>
+                                    <span className="voter-icon">
+                                        {rematchVoters.includes(p.name) ? '\u2713' : '\u2026'}
+                                    </span>
+                                    <span className="voter-name" style={{ color: p.color }}>{p.name}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 

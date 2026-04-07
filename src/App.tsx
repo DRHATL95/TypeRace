@@ -260,6 +260,8 @@ function App() {
                     onNewRace={returnToWelcome}
                     podium={mp.state === 'finished' ? mp.raceResults : undefined}
                     onLeaveRoom={mp.state === 'finished' ? () => { mp.leave(); returnToWelcome(); } : undefined}
+                    rematchVoters={mp.state === 'finished' ? mp.rematchVoters : undefined}
+                    rematchSecondsLeft={mp.state === 'finished' ? mp.rematchSecondsLeft : undefined}
                 />
             )}
 

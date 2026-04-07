@@ -63,4 +63,5 @@ export type ServerMessage =
   | { type: 'player-finished'; playerName: string; result: RaceResult }
   | { type: 'race-end'; results: PlayerResult[] }
   | { type: 'rematch-request'; from: string; accepted: string[] }
+  | { type: 'rematch-countdown'; secondsLeft: number; voters: string[] }
   | { type: 'error'; message: string };

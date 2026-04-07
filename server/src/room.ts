@@ -33,6 +33,8 @@ export class Room {
   lastActivity: number = Date.now();
   private countdownTimer: NodeJS.Timeout | null = null;
   private finishTimer: NodeJS.Timeout | null = null;
+  private rematchTimer: NodeJS.Timeout | null = null;
+  private rematchDeadline: NodeJS.Timeout | null = null;
 
   category: PassageCategory;
 
@@ -169,25 +171,82 @@ export class Room {
 
   requestRematch(ws: WebSocket): void {
     const player = this.players.get(ws);
-    if (!player) return;
+    if (!player || this.state !== 'finished') return;
 
     player.wantsRematch = true;
     const accepted = Array.from(this.players.values())
       .filter(p => p.wantsRematch)
       .map(p => p.name);
 
-    this.broadcast({
-      type: 'rematch-request',
-      from: player.name,
-      accepted,
-    });
+    // Start 30-second countdown on first vote
+    if (accepted.length === 1 && !this.rematchDeadline) {
+      let secondsLeft = 30;
+      this.broadcast({ type: 'rematch-countdown', secondsLeft, voters: accepted });
 
+      this.rematchTimer = setInterval(() => {
+        secondsLeft--;
+        const currentVoters = Array.from(this.players.values())
+          .filter(p => p.wantsRematch)
+          .map(p => p.name);
+        this.broadcast({ type: 'rematch-countdown', secondsLeft, voters: currentVoters });
+
+        if (secondsLeft <= 0) {
+          this.resolveRematch();
+        }
+      }, 1000);
+
+      this.rematchDeadline = this.rematchTimer;
+    } else {
+      // Broadcast updated voter list with countdown
+      const currentVoters = Array.from(this.players.values())
+        .filter(p => p.wantsRematch)
+        .map(p => p.name);
+      this.broadcast({
+        type: 'rematch-request',
+        from: player.name,
+        accepted: currentVoters,
+      });
+    }
+
+    // If all players voted, start immediately
     if (accepted.length === this.players.size) {
+      this.clearRematchTimers();
       this.resetForRematch();
     }
   }
 
+  private resolveRematch(): void {
+    this.clearRematchTimers();
+
+    // Remove players who didn't vote
+    const toRemove: WebSocket[] = [];
+    for (const [ws, player] of this.players) {
+      if (!player.wantsRematch) {
+        toRemove.push(ws);
+      }
+    }
+    for (const ws of toRemove) {
+      this.players.delete(ws);
+      try {
+        ws.send(JSON.stringify({ type: 'error', message: 'Removed from room (did not vote for rematch)' }));
+      } catch {}
+    }
+
+    if (this.players.size > 0) {
+      this.resetForRematch();
+    }
+  }
+
+  private clearRematchTimers(): void {
+    if (this.rematchTimer) {
+      clearInterval(this.rematchTimer);
+      this.rematchTimer = null;
+    }
+    this.rematchDeadline = null;
+  }
+
   private resetForRematch(): void {
+    this.clearRematchTimers();
     this.category = Room.randomCategory();
     this.passage = getRandomPassage(this.difficulty, this.category) || this.passage;
     this.state = 'lobby';
