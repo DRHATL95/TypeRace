@@ -191,6 +191,52 @@
     animation: fadeUp 0.6s ease-out 0.45s both;
 }
 
+/* ── Category picker (solo between-match) ─────────────── */
+.results-category-picker {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    animation: fadeUp 0.6s ease-out 0.5s both;
+}
+
+.results-cat-label {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    color: var(--text-secondary);
+}
+
+.results-cat-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.results-cat-btn {
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 0.4rem 0.8rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--text-ghost);
+}
+
+.results-cat-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.results-cat-btn.active {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
+}
+
 /* ── Action buttons ────────────────────────────────────── */
 .results-actions {
     display: flex;

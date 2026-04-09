@@ -42,6 +42,7 @@ const KEYS = {
   MUTED:         'typerace-muted',
   PLAYER_NAME:   'typerace-player-name',
   CATEGORY:      'typerace-category',
+  VOLUME:        'typerace-volume',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -171,6 +172,15 @@ export function getPlayerName(): string {
 
 export function setPlayerName(name: string): void {
   write(KEYS.PLAYER_NAME, name);
+}
+
+/** Volume level 0–100, default 50 */
+export function getVolume(): number {
+  return read<number>(KEYS.VOLUME, 50);
+}
+
+export function setVolume(v: number): void {
+  write(KEYS.VOLUME, Math.max(0, Math.min(100, Math.round(v))));
 }
 
 export function getCategory(): PassageCategory {

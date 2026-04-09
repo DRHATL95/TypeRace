@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TextPassage, TypingStats, CharacterStatus, RaceResult, FireStreakTier } from '../types/GameTypes';
 import { parseTextToCharacters, calculateRaceResult } from '../utils/typingUtils';
-import { playKeystroke, playError, playFanfare, playKeystrokeAtPitch, getMuted, toggleMute } from '../utils/audioEngine';
+import { playKeystroke, playError, playFanfare, playKeystrokeAtPitch, getMuted, toggleMute, getVolumeLevel, setVolumeLevel } from '../utils/audioEngine';
 import { createBurstOverlay } from '../utils/particleBurst';
 import { useSpeedTier } from '../hooks/useSpeedTier';
 import { useFireStreak } from '../hooks/useFireStreak';
@@ -55,6 +55,7 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
     const [showCountdown, setShowCountdown] = useState(false);
     const [countdown, setCountdown] = useState(3);
     const [muted, setMutedState] = useState(getMuted());
+    const [volumeLevel, setVolumeLevelState] = useState(getVolumeLevel());
     const [shaking, setShaking] = useState(false);
     const [fireTier, setFireTier] = useState<FireStreakTier>('none');
     const [fireCount, setFireCount] = useState(0);
@@ -262,6 +263,12 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         setMutedState(nowMuted);
     };
 
+    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const v = Number(e.target.value);
+        setVolumeLevelState(v);
+        setVolumeLevel(v);
+    };
+
     const getCurrentAccuracy = () => {
         if (stats.charactersTyped === 0) return 100;
         const correct = stats.charactersTyped - stats.errors;
@@ -308,9 +315,22 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
                     )}
                 </div>
                 <div className="hud-right">
-                    <button className="mute-btn" onClick={handleToggleMute} title={muted ? 'Unmute' : 'Mute'}>
-                        {muted ? 'MUTED' : 'SFX'}
-                    </button>
+                    <div className="volume-controls">
+                        <button className="mute-btn" onClick={handleToggleMute} title={muted ? 'Unmute' : 'Mute'}>
+                            {muted ? 'MUTED' : 'SFX'}
+                        </button>
+                        {!muted && (
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={volumeLevel}
+                                onChange={handleVolumeChange}
+                                className="volume-slider"
+                                title={`Volume: ${volumeLevel}%`}
+                            />
+                        )}
+                    </div>
                     <div className="hud-stat">
                         <span className="hud-stat-value wpm">{currentWPM}</span>
                         <span className="hud-stat-label">WPM</span>
@@ -365,9 +385,11 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
                     <button onClick={onHome} className="restart-btn">
                         [ home ]
                     </button>
-                    <button onClick={onNewText} className="restart-btn">
-                        [ new text ]
-                    </button>
+                    {!multiplayerPlayers && (
+                        <button onClick={onNewText} className="restart-btn">
+                            [ new text ]
+                        </button>
+                    )}
                 </div>
             </div>
 

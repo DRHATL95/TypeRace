@@ -382,6 +382,43 @@
     border: 1px solid rgba(255, 170, 0, 0.2);
 }
 
+/* ── Volume controls ───────────────────────────────────── */
+.volume-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 60px;
+    height: 3px;
+    background: var(--text-ghost);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    background: var(--cyan);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    background: var(--cyan);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
 /* ── Mute button ───────────────────────────────────────── */
 .mute-btn {
     font-family: var(--font-mono);

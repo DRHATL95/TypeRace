@@ -1,9 +1,9 @@
-import { isMuted, setMuted as persistMute } from './storage';
-import { setMenuMusicMuted } from './menuMusic';
+import { isMuted, setMuted as persistMute, getVolume, setVolume as persistVolume } from './storage';
+import { setMenuMusicMuted, setMenuMusicVolume } from './menuMusic';
 
 let audioCtx: AudioContext | null = null;
 
-function getCtx(): AudioContext {
+export function getCtx(): AudioContext {
   if (!audioCtx) {
     audioCtx = new AudioContext();
   }
@@ -11,9 +11,25 @@ function getCtx(): AudioContext {
 }
 
 let muted = isMuted();
+let volume = getVolume(); // 0–100
+
+/** Returns a 0–1 gain multiplier based on the current volume setting */
+export function getVolumeScale(): number {
+  return volume / 100;
+}
 
 export function getMuted(): boolean {
   return muted;
+}
+
+export function getVolumeLevel(): number {
+  return volume;
+}
+
+export function setVolumeLevel(v: number): void {
+  volume = Math.max(0, Math.min(100, Math.round(v)));
+  persistVolume(volume);
+  setMenuMusicVolume(volume / 100);
 }
 
 export function toggleMute(): boolean {
@@ -25,6 +41,7 @@ export function toggleMute(): boolean {
 
 export function playKeystroke(): void {
   if (muted) return;
+  const s = getVolumeScale();
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -35,7 +52,7 @@ export function playKeystroke(): void {
   osc.frequency.value = freqs[Math.floor(Math.random() * freqs.length)];
   osc.type = 'square';
 
-  gain.gain.setValueAtTime(0.03, ctx.currentTime);
+  gain.gain.setValueAtTime(0.03 * s, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
 
   osc.start(ctx.currentTime);
@@ -44,6 +61,7 @@ export function playKeystroke(): void {
 
 export function playError(): void {
   if (muted) return;
+  const s = getVolumeScale();
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -53,7 +71,7 @@ export function playError(): void {
   osc.frequency.value = 200;
   osc.type = 'sawtooth';
 
-  gain.gain.setValueAtTime(0.06, ctx.currentTime);
+  gain.gain.setValueAtTime(0.06 * s, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
 
   osc.start(ctx.currentTime);
@@ -62,6 +80,7 @@ export function playError(): void {
 
 export function playFanfare(): void {
   if (muted) return;
+  const s = getVolumeScale();
   const ctx = getCtx();
   const notes = [523.25, 659.25, 783.99];
 
@@ -76,7 +95,7 @@ export function playFanfare(): void {
 
     const startTime = ctx.currentTime + i * 0.08;
     gain.gain.setValueAtTime(0, startTime);
-    gain.gain.linearRampToValueAtTime(0.08, startTime + 0.1);
+    gain.gain.linearRampToValueAtTime(0.08 * s, startTime + 0.1);
     gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.8);
 
     osc.start(startTime);
@@ -86,6 +105,7 @@ export function playFanfare(): void {
 
 export function playKeystrokeAtPitch(pitchMultiplier: number): void {
   if (muted) return;
+  const s = getVolumeScale();
   const ctx = getCtx();
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -96,7 +116,7 @@ export function playKeystrokeAtPitch(pitchMultiplier: number): void {
   osc.frequency.value = freqs[Math.floor(Math.random() * freqs.length)] * pitchMultiplier;
   osc.type = 'square';
 
-  gain.gain.setValueAtTime(0.03, ctx.currentTime);
+  gain.gain.setValueAtTime(0.03 * s, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
 
   osc.start(ctx.currentTime);

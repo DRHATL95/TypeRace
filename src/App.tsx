@@ -291,6 +291,8 @@ function App() {
                     onLeaveRoom={mp.state === 'finished' ? () => { mp.leave(); returnToWelcome(); } : undefined}
                     rematchVoters={mp.state === 'finished' ? mp.rematchVoters : undefined}
                     rematchSecondsLeft={mp.state === 'finished' ? mp.rematchSecondsLeft : undefined}
+                    category={mp.state === 'disconnected' ? category : undefined}
+                    onCategoryChange={mp.state === 'disconnected' ? handleCategoryChange : undefined}
                 />
             )}
 

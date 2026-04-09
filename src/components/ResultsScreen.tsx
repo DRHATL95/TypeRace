@@ -1,5 +1,5 @@
 import React from 'react';
-import { RaceResult } from '../types/GameTypes';
+import { RaceResult, PassageCategory } from '../types/GameTypes';
 import { getPerformanceMessage, formatTime } from '../utils/typingUtils';
 import { getHistory } from '../utils/storage';
 import Sparkline from './Sparkline';
@@ -22,6 +22,8 @@ interface ResultsScreenProps {
     onLeaveRoom?: () => void;
     rematchVoters?: string[];
     rematchSecondsLeft?: number | null;
+    category?: PassageCategory;
+    onCategoryChange?: (c: PassageCategory) => void;
 }
 
 const getRank = (wpm: number, accuracy: number) => {
@@ -39,7 +41,13 @@ function getFireTierLabel(streak: number): string {
     return '';
 }
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft }) => {
+const CATEGORIES: { value: PassageCategory; label: string }[] = [
+    { value: 'sentences', label: 'SENTENCES' },
+    { value: 'pop-culture', label: 'POP CULTURE' },
+    { value: 'random-words', label: 'RANDOM WORDS' },
+];
+
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange }) => {
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
     const rank = getRank(result.wpm, result.accuracy);
     const history = getHistory();
@@ -154,6 +162,23 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
                 )}
 
                 <div className="results-message">{performanceMessage}</div>
+
+                {onCategoryChange && category && (
+                    <div className="results-category-picker">
+                        <span className="results-cat-label">NEXT CATEGORY</span>
+                        <div className="results-cat-buttons">
+                            {CATEGORIES.map(c => (
+                                <button
+                                    key={c.value}
+                                    className={`results-cat-btn${c.value === category ? ' active' : ''}`}
+                                    onClick={() => onCategoryChange(c.value)}
+                                >
+                                    {c.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="results-actions">
                     <button onClick={onRestart} className="action-btn action-primary">

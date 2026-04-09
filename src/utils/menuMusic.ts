@@ -1,20 +1,20 @@
-import { isMuted } from './storage';
+import { isMuted, getVolume } from './storage';
+import { getCtx } from './audioEngine';
 
-let audio: HTMLAudioElement | null = null;
+let sourceNode: AudioBufferSourceNode | null = null;
+let gainNode: GainNode | null = null;
+let audioBuffer: AudioBuffer | null = null;
 let fadeInterval: ReturnType<typeof setInterval> | null = null;
+let loading = false;
 
-const TARGET_VOLUME = 0.3;
+const BASE_VOLUME = 0.3;
+let volumeScale = getVolume() / 100; // 0–1
+
+function targetVolume(): number {
+  return BASE_VOLUME * volumeScale;
+}
 const FADE_STEP = 0.02;
 const FADE_INTERVAL_MS = 30;
-
-function ensureAudio(): HTMLAudioElement {
-  if (!audio) {
-    audio = new Audio(`${process.env.PUBLIC_URL}/audio/menu-theme.mp3`);
-    audio.loop = true;
-    audio.volume = 0;
-  }
-  return audio;
-}
 
 function clearFade(): void {
   if (fadeInterval) {
@@ -23,38 +23,61 @@ function clearFade(): void {
   }
 }
 
-let pendingStart = false;
+async function loadBuffer(): Promise<AudioBuffer | null> {
+  if (audioBuffer) return audioBuffer;
+  if (loading) return null;
+  loading = true;
+  try {
+    const url = `${process.env.PUBLIC_URL}/audio/menu-theme.mp3`;
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const ctx = getCtx();
+    audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    return audioBuffer;
+  } catch {
+    return null;
+  } finally {
+    loading = false;
+  }
+}
 
 function fadeIn(): void {
-  const el = ensureAudio();
+  if (!gainNode) return;
   clearFade();
+  const gn = gainNode;
   fadeInterval = setInterval(() => {
-    if (el.volume < TARGET_VOLUME - FADE_STEP) {
-      el.volume = Math.min(el.volume + FADE_STEP, TARGET_VOLUME);
+    const current = gn.gain.value;
+    if (current < targetVolume() - FADE_STEP) {
+      gn.gain.value = Math.min(current + FADE_STEP, targetVolume());
     } else {
-      el.volume = TARGET_VOLUME;
+      gn.gain.value = targetVolume();
       clearFade();
     }
   }, FADE_INTERVAL_MS);
 }
 
+function fadeOut(onDone: () => void): void {
+  if (!gainNode) { onDone(); return; }
+  clearFade();
+  const gn = gainNode;
+  fadeInterval = setInterval(() => {
+    const current = gn.gain.value;
+    if (current > FADE_STEP) {
+      gn.gain.value = Math.max(current - FADE_STEP, 0);
+    } else {
+      gn.gain.value = 0;
+      clearFade();
+      onDone();
+    }
+  }, FADE_INTERVAL_MS);
+}
+
+let pendingStart = false;
+
 function removeGestureListeners(): void {
   document.removeEventListener('pointerdown', handleUserGesture);
   document.removeEventListener('click', handleUserGesture);
   document.removeEventListener('keydown', handleUserGesture);
-}
-
-function handleUserGesture(): void {
-  if (!pendingStart) return;
-  pendingStart = false;
-  removeGestureListeners();
-
-  const el = ensureAudio();
-  el.volume = 0;
-  el.play().then(() => {
-    // Only fade in if we haven't been stopped in the meantime
-    if (!audio?.paused) fadeIn();
-  }).catch(() => {});
 }
 
 function addGestureListeners(): void {
@@ -63,54 +86,98 @@ function addGestureListeners(): void {
   document.addEventListener('keydown', handleUserGesture);
 }
 
-export function startMenuMusic(): void {
+async function playMusic(): Promise<boolean> {
+  const buf = await loadBuffer();
+  if (!buf) return false;
+
+  const ctx = getCtx();
+
+  // Resume suspended AudioContext (autoplay policy)
+  if (ctx.state === 'suspended') {
+    try { await ctx.resume(); } catch { return false; }
+  }
+
+  // Stop any existing source
+  if (sourceNode) {
+    try { sourceNode.stop(); } catch {}
+    sourceNode = null;
+  }
+
+  gainNode = ctx.createGain();
+  gainNode.gain.value = 0;
+  gainNode.connect(ctx.destination);
+
+  sourceNode = ctx.createBufferSource();
+  sourceNode.buffer = buf;
+  sourceNode.loop = true;
+  sourceNode.connect(gainNode);
+  sourceNode.start();
+
+  fadeIn();
+  return true;
+}
+
+async function handleUserGesture(): Promise<void> {
+  if (!pendingStart) return;
+  pendingStart = false;
+  removeGestureListeners();
+  await playMusic();
+}
+
+export async function startMenuMusic(): Promise<void> {
   if (isMuted()) return;
-  const el = ensureAudio();
-  if (!el.paused) return;
+  if (sourceNode) return; // already playing
 
-  el.volume = 0;
+  // Start loading buffer immediately (non-blocking)
+  loadBuffer();
 
-  // Register gesture listeners BEFORE play() — some browsers (Firefox)
-  // silently block autoplay without rejecting the promise, so we can't
-  // rely on .catch() to set up the fallback.
+  // Register gesture listeners before attempting play —
+  // AudioContext.resume() may silently fail without user activation
   pendingStart = true;
   addGestureListeners();
 
-  el.play().then(() => {
+  const played = await playMusic();
+  if (played) {
     // Autoplay succeeded — cancel gesture fallback
-    if (!pendingStart) return; // gesture listener already handled it
     pendingStart = false;
     removeGestureListeners();
-    fadeIn();
-  }).catch(() => {
-    // Explicitly blocked — gesture listeners already active, nothing to do
-  });
+  }
+  // If not played, gesture listeners remain active as fallback
 }
 
 export function stopMenuMusic(): void {
   pendingStart = false;
   removeGestureListeners();
-  if (!audio || audio.paused) return;
 
-  clearFade();
-  const el = audio;
-  fadeInterval = setInterval(() => {
-    if (el.volume > FADE_STEP) {
-      el.volume = Math.max(el.volume - FADE_STEP, 0);
-    } else {
-      el.volume = 0;
-      el.pause();
-      clearFade();
+  if (!sourceNode) return;
+
+  const node = sourceNode;
+  fadeOut(() => {
+    try { node.stop(); } catch {}
+    if (sourceNode === node) {
+      sourceNode = null;
+      gainNode = null;
     }
-  }, FADE_INTERVAL_MS);
+  });
+}
+
+/** Live-update menu music volume (0–1 scale) */
+export function setMenuMusicVolume(v: number): void {
+  volumeScale = v;
+  if (gainNode && sourceNode) {
+    gainNode.gain.value = targetVolume();
+  }
 }
 
 export function setMenuMusicMuted(muted: boolean): void {
-  if (!audio) return;
   if (muted) {
-    audio.volume = 0;
-    audio.pause();
     clearFade();
+    if (gainNode) gainNode.gain.value = 0;
+    if (sourceNode) {
+      try { sourceNode.stop(); } catch {}
+      sourceNode = null;
+      gainNode = null;
+    }
   } else {
     startMenuMusic();
   }
