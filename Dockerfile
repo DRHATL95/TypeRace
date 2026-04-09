@@ -25,7 +25,7 @@ WORKDIR /app
 COPY server/package.json server/package-lock.json* ./server/
 RUN cd server && npm ci --omit=dev
 
-# Built server
+# Built server + migrations
 COPY --from=server-build /app/server/dist/ ./server/dist/
 
 # Built client (served by Express in production)

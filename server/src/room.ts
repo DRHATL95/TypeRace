@@ -6,6 +6,11 @@ const PLAYER_COLORS = ['#00f0ff', '#ff0080', '#00ff88', '#ffaa00'];
 const MAX_PLAYERS = 4;
 const FINISH_TIMEOUT_MS = 60_000;
 
+const FALLBACK_PASSAGE: TextPassage = {
+  id: 'fallback', title: 'Fallback', text: 'The quick brown fox jumps over the lazy dog.',
+  difficulty: 'easy', category: 'sentences'
+};
+
 interface Player {
   ws: WebSocket;
   name: string;
@@ -19,10 +24,17 @@ interface Player {
 export type RoomState = 'lobby' | 'countdown' | 'racing' | 'finished';
 
 export class Room {
-  private static readonly CATEGORIES: PassageCategory[] = ['sentences', 'pop-culture', 'random-words'];
+  static readonly CATEGORIES: PassageCategory[] = ['sentences', 'pop-culture', 'random-words'];
 
-  private static randomCategory(): PassageCategory {
+  static randomCategory(): PassageCategory {
     return Room.CATEGORIES[Math.floor(Math.random() * Room.CATEGORIES.length)];
+  }
+
+  /** Create a room with an async passage fetch */
+  static async create(code: string, difficulty: Difficulty): Promise<Room> {
+    const category = Room.randomCategory();
+    const passage = await getRandomPassage(difficulty, category) || FALLBACK_PASSAGE;
+    return new Room(code, difficulty, category, passage);
   }
 
   code: string;
@@ -38,14 +50,11 @@ export class Room {
 
   category: PassageCategory;
 
-  constructor(code: string, difficulty: Difficulty, _category: PassageCategory = 'sentences') {
+  constructor(code: string, difficulty: Difficulty, category: PassageCategory, passage: TextPassage) {
     this.code = code;
     this.difficulty = difficulty;
-    this.category = Room.randomCategory();
-    this.passage = getRandomPassage(difficulty, this.category) || {
-      id: 'fallback', title: 'Fallback', text: 'The quick brown fox jumps over the lazy dog.',
-      difficulty: 'easy', category: 'sentences'
-    };
+    this.category = category;
+    this.passage = passage;
   }
 
   addPlayer(ws: WebSocket, name: string): boolean {
@@ -245,10 +254,10 @@ export class Room {
     this.rematchDeadline = null;
   }
 
-  private resetForRematch(): void {
+  private async resetForRematch(): Promise<void> {
     this.clearRematchTimers();
     this.category = Room.randomCategory();
-    this.passage = getRandomPassage(this.difficulty, this.category) || this.passage;
+    this.passage = await getRandomPassage(this.difficulty, this.category) || this.passage;
     this.state = 'lobby';
     if (this.finishTimer) clearTimeout(this.finishTimer);
     this.finishTimer = null;

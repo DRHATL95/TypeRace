@@ -1,112 +1,60 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+import pool from './db/pool';
 import { TextPassage, Difficulty, PassageCategory } from './types';
-
-const DB_PATH = path.join(__dirname, '..', 'typerace.db');
-
-const db = new Database(DB_PATH);
-
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
-
-// ── Schema ────────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS passages (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    text TEXT NOT NULL,
-    difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
-    category TEXT NOT NULL CHECK(category IN ('sentences', 'pop-culture', 'random-words')),
-    created_at TEXT DEFAULT (datetime('now'))
-  )
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS race_results (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    player_name TEXT NOT NULL,
-    wpm REAL NOT NULL,
-    accuracy REAL NOT NULL,
-    fire_streak INTEGER NOT NULL DEFAULT 0,
-    difficulty TEXT NOT NULL CHECK(difficulty IN ('easy', 'medium', 'hard')),
-    category TEXT NOT NULL CHECK(category IN ('sentences', 'pop-culture', 'random-words')),
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )
-`);
-
-db.exec(`
-  CREATE INDEX IF NOT EXISTS idx_results_date ON race_results(created_at)
-`);
-
-// ── Queries ───────────────────────────────────────────────
-
-const stmtAll = db.prepare(`
-  SELECT id, title, text, difficulty, category FROM passages
-  WHERE (@difficulty IS NULL OR difficulty = @difficulty)
-    AND (@category IS NULL OR category = @category)
-  ORDER BY title
-`);
-
-const stmtRandom = db.prepare(`
-  SELECT id, title, text, difficulty, category FROM passages
-  WHERE (@difficulty IS NULL OR difficulty = @difficulty)
-    AND (@category IS NULL OR category = @category)
-  ORDER BY RANDOM()
-  LIMIT 1
-`);
-
-const stmtInsert = db.prepare(`
-  INSERT INTO passages (id, title, text, difficulty, category)
-  VALUES (@id, @title, @text, @difficulty, @category)
-`);
-
-const stmtCount = db.prepare(`SELECT COUNT(*) as count FROM passages`);
-
-const stmtInsertResult = db.prepare(`
-  INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category)
-  VALUES (@player_name, @wpm, @accuracy, @fire_streak, @difficulty, @category)
-`);
-
-const stmtTopWpmToday = db.prepare(`
-  SELECT player_name, wpm, accuracy, fire_streak
-  FROM race_results
-  WHERE date(created_at) = date('now')
-  ORDER BY wpm DESC
-  LIMIT 5
-`);
-
-const stmtTopStreakToday = db.prepare(`
-  SELECT player_name, wpm, accuracy, fire_streak
-  FROM race_results
-  WHERE date(created_at) = date('now')
-  ORDER BY fire_streak DESC
-  LIMIT 5
-`);
 
 // ── Public API ────────────────────────────────────────────
 
-export function getPassages(difficulty?: Difficulty, category?: PassageCategory): TextPassage[] {
-  return stmtAll.all({
-    difficulty: difficulty || null,
-    category: category || null,
-  }) as TextPassage[];
+export async function getPassages(difficulty?: Difficulty, category?: PassageCategory): Promise<TextPassage[]> {
+  const conditions: string[] = [];
+  const params: (string | null)[] = [];
+
+  if (difficulty) {
+    params.push(difficulty);
+    conditions.push(`difficulty = $${params.length}`);
+  }
+  if (category) {
+    params.push(category);
+    conditions.push(`category = $${params.length}`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const { rows } = await pool.query<TextPassage>(
+    `SELECT id, title, text, difficulty, category FROM passages ${where} ORDER BY title`,
+    params
+  );
+  return rows;
 }
 
-export function getRandomPassage(difficulty?: Difficulty, category?: PassageCategory): TextPassage | null {
-  const row = stmtRandom.get({
-    difficulty: difficulty || null,
-    category: category || null,
-  }) as TextPassage | undefined;
-  return row || null;
+export async function getRandomPassage(difficulty?: Difficulty, category?: PassageCategory): Promise<TextPassage | null> {
+  const conditions: string[] = [];
+  const params: (string | null)[] = [];
+
+  if (difficulty) {
+    params.push(difficulty);
+    conditions.push(`difficulty = $${params.length}`);
+  }
+  if (category) {
+    params.push(category);
+    conditions.push(`category = $${params.length}`);
+  }
+
+  const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+  const { rows } = await pool.query<TextPassage>(
+    `SELECT id, title, text, difficulty, category FROM passages ${where} ORDER BY RANDOM() LIMIT 1`,
+    params
+  );
+  return rows[0] || null;
 }
 
-export function insertPassage(passage: TextPassage): void {
-  stmtInsert.run(passage);
+export async function insertPassage(passage: TextPassage): Promise<void> {
+  await pool.query(
+    `INSERT INTO passages (id, title, text, difficulty, category) VALUES ($1, $2, $3, $4, $5)`,
+    [passage.id, passage.title, passage.text, passage.difficulty, passage.category]
+  );
 }
 
-export function getPassageCount(): number {
-  const row = stmtCount.get() as { count: number };
-  return row.count;
+export async function getPassageCount(): Promise<number> {
+  const { rows } = await pool.query<{ count: string }>('SELECT COUNT(*) as count FROM passages');
+  return parseInt(rows[0].count, 10);
 }
 
 export interface LeaderboardEntry {
@@ -116,22 +64,40 @@ export interface LeaderboardEntry {
   fire_streak: number;
 }
 
-export function insertRaceResult(result: {
+export async function insertRaceResult(result: {
   player_name: string;
   wpm: number;
   accuracy: number;
   fire_streak: number;
   difficulty: Difficulty;
   category: PassageCategory;
-}): number {
-  const info = stmtInsertResult.run(result);
-  return info.lastInsertRowid as number;
+}): Promise<number> {
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category)
+     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category]
+  );
+  return rows[0].id;
 }
 
-export function getTodayLeaderboard(): { topWpm: LeaderboardEntry[]; topStreak: LeaderboardEntry[] } {
-  const topWpm = stmtTopWpmToday.all() as LeaderboardEntry[];
-  const topStreak = stmtTopStreakToday.all() as LeaderboardEntry[];
-  return { topWpm, topStreak };
+export async function getTodayLeaderboard(): Promise<{ topWpm: LeaderboardEntry[]; topStreak: LeaderboardEntry[] }> {
+  const [wpmResult, streakResult] = await Promise.all([
+    pool.query<LeaderboardEntry>(
+      `SELECT player_name, wpm, accuracy, fire_streak
+       FROM race_results
+       WHERE created_at::date = CURRENT_DATE
+       ORDER BY wpm DESC
+       LIMIT 5`
+    ),
+    pool.query<LeaderboardEntry>(
+      `SELECT player_name, wpm, accuracy, fire_streak
+       FROM race_results
+       WHERE created_at::date = CURRENT_DATE
+       ORDER BY fire_streak DESC
+       LIMIT 5`
+    ),
+  ]);
+  return { topWpm: wpmResult.rows, topStreak: streakResult.rows };
 }
 
 // ── Seed ──────────────────────────────────────────────────
@@ -192,19 +158,14 @@ const SEED_PASSAGES: TextPassage[] = [
   { id: 'r-h-4', title: 'Symbol Heavy', text: 'zero-day man-in-the-middle back-to-back state-of-the-art self-sufficient well-known high-quality up-to-date over-the-counter first-class mother-in-law cross-platform', difficulty: 'hard', category: 'random-words' },
 ];
 
-export function seedIfEmpty(): void {
-  const count = getPassageCount();
+export async function seedIfEmpty(): Promise<void> {
+  const count = await getPassageCount();
   if (count === 0) {
-    const insertMany = db.transaction((passages: TextPassage[]) => {
-      for (const p of passages) {
-        insertPassage(p);
-      }
-    });
-    insertMany(SEED_PASSAGES);
+    for (const p of SEED_PASSAGES) {
+      await insertPassage(p);
+    }
     console.log(`Seeded database with ${SEED_PASSAGES.length} passages`);
   } else {
     console.log(`Database has ${count} passages`);
   }
 }
-
-export default db;

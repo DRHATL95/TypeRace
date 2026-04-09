@@ -4,13 +4,11 @@ import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
+import { runMigrations } from './db/migrate';
 import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard } from './db';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const ROOM_TTL_MS = 10 * 60 * 1000;
-
-// Seed database on startup
-seedIfEmpty();
 
 const app = express();
 app.use(express.json());
@@ -22,8 +20,9 @@ const playerRooms = new Map<WebSocket, string>();
 
 // ── REST API ──────────────────────────────────────────────
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok', rooms: rooms.size, passages: getPassageCount() });
+app.get('/health', async (_req, res) => {
+  const count = await getPassageCount();
+  res.json({ status: 'ok', rooms: rooms.size, passages: count });
 });
 
 // CORS for client dev server
@@ -35,18 +34,18 @@ app.use((_req, res, next) => {
 });
 
 // List passages with optional filters
-app.get('/passages', (req, res) => {
+app.get('/passages', async (req, res) => {
   const difficulty = req.query.difficulty as Difficulty | undefined;
   const category = req.query.category as PassageCategory | undefined;
-  const passages = getPassages(difficulty, category);
+  const passages = await getPassages(difficulty, category);
   res.json(passages);
 });
 
 // Get a random passage with optional filters
-app.get('/passages/random', (req, res) => {
+app.get('/passages/random', async (req, res) => {
   const difficulty = req.query.difficulty as Difficulty | undefined;
   const category = req.query.category as PassageCategory | undefined;
-  const passage = getRandomFromDB(difficulty, category);
+  const passage = await getRandomFromDB(difficulty, category);
   if (!passage) {
     res.status(404).json({ error: 'No passages found for the given filters' });
     return;
@@ -55,7 +54,7 @@ app.get('/passages/random', (req, res) => {
 });
 
 // Add a new passage
-app.post('/passages', (req, res) => {
+app.post('/passages', async (req, res) => {
   const { id, title, text, difficulty, category } = req.body;
   if (!id || !title || !text || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields: id, title, text, difficulty, category' });
@@ -72,10 +71,10 @@ app.post('/passages', (req, res) => {
     return;
   }
   try {
-    insertPassage({ id, title, text, difficulty, category });
+    await insertPassage({ id, title, text, difficulty, category });
     res.status(201).json({ id, title, text, difficulty, category });
   } catch (err: any) {
-    if (err.message?.includes('UNIQUE constraint')) {
+    if (err.code === '23505') { // PostgreSQL unique violation
       res.status(409).json({ error: 'A passage with that id already exists' });
     } else {
       res.status(500).json({ error: 'Failed to insert passage' });
@@ -84,14 +83,14 @@ app.post('/passages', (req, res) => {
 });
 
 // Submit a race result
-app.post('/results', (req, res) => {
+app.post('/results', async (req, res) => {
   const { playerName, wpm, accuracy, fireStreak, difficulty, category } = req.body;
   if (!playerName || wpm == null || accuracy == null || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields' });
     return;
   }
   try {
-    const id = insertRaceResult({
+    const id = await insertRaceResult({
       player_name: playerName,
       wpm,
       accuracy,
@@ -106,9 +105,9 @@ app.post('/results', (req, res) => {
 });
 
 // Get today's leaderboard
-app.get('/leaderboard/today', (_req, res) => {
+app.get('/leaderboard/today', async (_req, res) => {
   try {
-    const leaderboard = getTodayLeaderboard();
+    const leaderboard = await getTodayLeaderboard();
     res.json(leaderboard);
   } catch {
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
@@ -154,17 +153,20 @@ wss.on('connection', (ws: WebSocket) => {
     switch (msg.type) {
       case 'create': {
         const code = generateRoomCode();
-        const room = new Room(code, msg.difficulty, msg.category);
-        rooms.set(code, room);
+        Room.create(code, msg.difficulty).then(room => {
+          rooms.set(code, room);
 
-        if (!room.addPlayer(ws, msg.playerName)) {
+          if (!room.addPlayer(ws, msg.playerName)) {
+            send(ws, { type: 'error', message: 'Failed to create room' });
+            return;
+          }
+
+          playerRooms.set(ws, code);
+          send(ws, { type: 'room-created', roomCode: code, passage: room.passage });
+          room.broadcast({ type: 'player-joined', players: room.getPlayerInfoList() });
+        }).catch(() => {
           send(ws, { type: 'error', message: 'Failed to create room' });
-          return;
-        }
-
-        playerRooms.set(ws, code);
-        send(ws, { type: 'room-created', roomCode: code, passage: room.passage });
-        room.broadcast({ type: 'player-joined', players: room.getPlayerInfoList() });
+        });
         break;
       }
 
@@ -263,6 +265,17 @@ setInterval(() => {
   }
 }, 60_000);
 
-server.listen(PORT, () => {
-  console.log(`TypeRace server running on port ${PORT}`);
+// ── Async startup ─────────────────────────────────────────
+async function main() {
+  await runMigrations();
+  await seedIfEmpty();
+
+  server.listen(PORT, () => {
+    console.log(`TypeRace server running on port ${PORT}`);
+  });
+}
+
+main().catch(err => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
 });
