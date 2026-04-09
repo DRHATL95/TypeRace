@@ -23,6 +23,47 @@
     animation: gridScroll 4s linear infinite;
 }
 
+/* ── Auth corner ───────────────────────────────────────── */
+.auth-corner {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 10;
+    animation: fadeUp 0.8s ease-out 0.1s both;
+}
+
+.auth-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.auth-name {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.auth-signin-btn {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 0.35rem 0.8rem;
+    background: transparent;
+    border: 1px solid var(--cyan);
+    border-radius: 2px;
+    color: var(--cyan);
+    cursor: pointer;
+    letter-spacing: 0.12em;
+    transition: all 0.2s ease;
+}
+
+.auth-signin-btn:hover {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+}
+
 /* ── Content ───────────────────────────────────────────── */
 .welcome-content {
     position: relative;

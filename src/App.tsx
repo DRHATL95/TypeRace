@@ -9,6 +9,7 @@ import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from 
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard } from './utils/api';
 import { useMultiplayer } from './hooks/useMultiplayer';
+import { useAuthToken } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
 import {
     getBests, updateBest, getHistory, addHistoryEntry,
@@ -47,6 +48,7 @@ function App() {
     const [leaderboard, setLeaderboard] = useState<TodayLeaderboard | null>(null);
 
     const mp = useMultiplayer();
+    const getAuthToken = useAuthToken();
 
     useEffect(() => {
         if (window.electronAPI) {
@@ -164,13 +166,15 @@ function App() {
         // Submit to server leaderboard (fire-and-forget)
         const playerName = getPlayerName();
         if (playerName) {
-            submitRaceResult({
-                playerName,
-                wpm: result.wpm,
-                accuracy: result.accuracy,
-                fireStreak: fireStreak,
-                difficulty,
-                category,
+            getAuthToken().then(token => {
+                submitRaceResult({
+                    playerName,
+                    wpm: result.wpm,
+                    accuracy: result.accuracy,
+                    fireStreak: fireStreak,
+                    difficulty,
+                    category,
+                }, token);
             });
         }
 

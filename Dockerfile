@@ -6,6 +6,8 @@ RUN npm ci
 COPY public/ public/
 COPY src/ src/
 COPY tsconfig.json ./
+ARG REACT_APP_CLERK_PUBLISHABLE_KEY
+ENV REACT_APP_CLERK_PUBLISHABLE_KEY=$REACT_APP_CLERK_PUBLISHABLE_KEY
 RUN npm run build:web
 
 # ── Stage 2: Build server ─────────────────────────────────

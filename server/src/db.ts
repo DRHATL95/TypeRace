@@ -71,11 +71,12 @@ export async function insertRaceResult(result: {
   fire_streak: number;
   difficulty: Difficulty;
   category: PassageCategory;
+  user_id?: string | null;
 }): Promise<number> {
   const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category]
+    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category, user_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category, result.user_id || null]
   );
   return rows[0].id;
 }

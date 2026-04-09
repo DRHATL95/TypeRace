@@ -59,11 +59,15 @@ export async function submitRaceResult(data: {
   fireStreak: number;
   difficulty: Difficulty;
   category: PassageCategory;
-}): Promise<void> {
+}, authToken?: string | null): Promise<void> {
   try {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
     await fetch(`${API_BASE}/results`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(data),
     });
   } catch {

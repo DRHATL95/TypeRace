@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
+import { clerkMiddleware, getAuth } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
@@ -28,10 +29,15 @@ app.get('/health', async (_req, res) => {
 // CORS for client dev server
 app.use((_req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Methods', 'GET, POST');
   next();
 });
+
+// Clerk auth middleware — attaches req.auth to every request (does not block unauthenticated)
+if (process.env.CLERK_SECRET_KEY) {
+  app.use(clerkMiddleware());
+}
 
 // List passages with optional filters
 app.get('/passages', async (req, res) => {
@@ -89,6 +95,12 @@ app.post('/results', async (req, res) => {
     res.status(400).json({ error: 'Missing required fields' });
     return;
   }
+  // Extract Clerk user ID if authenticated
+  let userId: string | null = null;
+  try {
+    const auth = getAuth(req);
+    userId = auth.userId;
+  } catch {}
   try {
     const id = await insertRaceResult({
       player_name: playerName,
@@ -97,6 +109,7 @@ app.post('/results', async (req, res) => {
       fire_streak: fireStreak || 0,
       difficulty,
       category,
+      user_id: userId,
     });
     res.status(201).json({ id });
   } catch (err) {

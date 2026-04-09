@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { SignInButton, UserButton } from '@clerk/clerk-react';
+import { useAppAuth } from '../hooks/useAuthToken';
 import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
 import { TodayLeaderboard } from '../utils/api';
 import { startMenuMusic, stopMenuMusic } from '../utils/menuMusic';
@@ -36,6 +38,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     todaysBest,
     leaderboard,
 }) => {
+    const { isSignedIn, userName } = useAppAuth();
+    const clerkAvailable = !!process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
     const [muted, setMutedState] = useState(getMuted());
     const [volume, setVolumeState] = useState(getVolumeLevel());
 
@@ -68,6 +72,27 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="welcome-grid-bg" />
 
             <div className="welcome-content">
+                {clerkAvailable && (
+                    <div className="auth-corner">
+                        {isSignedIn ? (
+                            <div className="auth-user">
+                                <span className="auth-name">{userName || 'Racer'}</span>
+                                <UserButton
+                                    appearance={{
+                                        elements: {
+                                            avatarBox: { width: 32, height: 32 },
+                                        },
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <SignInButton mode="modal">
+                                <button className="auth-signin-btn">SIGN IN</button>
+                            </SignInButton>
+                        )}
+                    </div>
+                )}
+
                 <header className="welcome-hero">
                     <div className="hero-label">TYPING VELOCITY ENGINE</div>
                     <h1 className="hero-title">
