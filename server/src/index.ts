@@ -35,7 +35,7 @@ app.use((_req, res, next) => {
 });
 
 // Clerk auth middleware — attaches req.auth to every request (does not block unauthenticated)
-if (process.env.CLERK_SECRET_KEY) {
+if (process.env.CLERK_SECRET_KEY && process.env.CLERK_PUBLISHABLE_KEY) {
   app.use(clerkMiddleware());
 }
 
