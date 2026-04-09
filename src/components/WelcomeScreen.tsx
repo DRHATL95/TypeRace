@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
 import { TodayLeaderboard } from '../utils/api';
 import { startMenuMusic, stopMenuMusic } from '../utils/menuMusic';
+import { getMuted, toggleMute, getVolumeLevel, setVolumeLevel } from '../utils/audioEngine';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -35,10 +36,24 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     todaysBest,
     leaderboard,
 }) => {
+    const [muted, setMutedState] = useState(getMuted());
+    const [volume, setVolumeState] = useState(getVolumeLevel());
+
     useEffect(() => {
         startMenuMusic();
         return () => { stopMenuMusic(); };
     }, []);
+
+    const handleToggleMute = () => {
+        const nowMuted = toggleMute();
+        setMutedState(nowMuted);
+    };
+
+    const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const v = Number(e.target.value);
+        setVolumeState(v);
+        setVolumeLevel(v);
+    };
 
     const currentBest = bests[difficulty];
     const difficulties: Difficulty[] = ['easy', 'medium', 'hard'];
@@ -166,6 +181,22 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         />
                         <span>Ghost Racing</span>
                     </label>
+                    <div className="welcome-volume">
+                        <button className="welcome-mute-btn" onClick={handleToggleMute}>
+                            {muted ? 'MUTED' : 'SFX'}
+                        </button>
+                        {!muted && (
+                            <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                value={volume}
+                                onChange={handleVolumeChange}
+                                className="welcome-volume-slider"
+                                title={`Volume: ${volume}%`}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 <footer className="welcome-keys">

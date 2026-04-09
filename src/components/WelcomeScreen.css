@@ -202,9 +202,68 @@
     transform: translateY(-2px);
 }
 
-/* ── Ghost toggle ──────────────────────────────────────── */
+/* ── Options row (ghost + volume) ──────────────────────── */
 .welcome-options {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
     animation: fadeUp 0.8s ease-out 0.5s both;
+}
+
+.welcome-volume {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.welcome-mute-btn {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+    background: transparent;
+    border: 1px solid var(--text-ghost);
+    border-radius: 2px;
+    color: var(--text-ghost);
+    cursor: pointer;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.welcome-mute-btn:hover {
+    border-color: var(--text-secondary);
+    color: var(--text-secondary);
+}
+
+.welcome-volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 60px;
+    height: 3px;
+    background: var(--text-ghost);
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+}
+
+.welcome-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    background: var(--cyan);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.welcome-volume-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    background: var(--cyan);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
 }
 
 .ghost-toggle {
