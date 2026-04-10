@@ -2,23 +2,82 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { clerkMiddleware, getAuth, verifyToken } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
-import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, createShare, getShare } from './db';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, createShare, getShare } from './db';
 import { nanoid } from 'nanoid';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const ROOM_TTL_MS = 10 * 60 * 1000;
+const IS_PROD = process.env.NODE_ENV === 'production';
+const ALLOWED_ORIGIN = process.env.PUBLIC_URL || 'https://typerace.howlab.co';
+
+// Minimal HTML escape for interpolating user-supplied strings into the share page.
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 const app = express();
-app.use(express.json());
+// We sit behind Traefik — trust one proxy hop so rate-limit sees real client IPs.
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '16kb' }));
+app.use(helmet({
+  contentSecurityPolicy: false, // client sets its own CSP; avoid conflicts with Clerk
+  crossOriginEmbedderPolicy: false,
+}));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
+// ── Rate limiters ─────────────────────────────────────────
+// Global read/write cap — catches scrapers and runaway clients.
+const globalLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, slow down.' },
+});
+// Strict cap for write endpoints that create DB rows.
+const writeLimiter = rateLimit({
+  windowMs: 60_000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many writes, slow down.' },
+});
+app.use(globalLimiter);
+
 const rooms = new Map<string, Room>();
 const playerRooms = new Map<WebSocket, string>();
+
+// ── WebSocket rate limits ─────────────────────────────────
+const MAX_WS_CONNECTIONS = 500;
+const MAX_WS_PER_IP = 8;
+const WS_MSG_PER_SECOND = 60; // humanly impossible keystroke rate + margin
+const wsIpCounts = new Map<string, number>();
+interface WsLimitState { tokens: number; lastRefill: number; ip: string; }
+const wsLimits = new WeakMap<WebSocket, WsLimitState>();
+
+function allowWsMessage(ws: WebSocket): boolean {
+  const state = wsLimits.get(ws);
+  if (!state) return false;
+  const now = Date.now();
+  const elapsed = (now - state.lastRefill) / 1000;
+  state.tokens = Math.min(WS_MSG_PER_SECOND, state.tokens + elapsed * WS_MSG_PER_SECOND);
+  state.lastRefill = now;
+  if (state.tokens < 1) return false;
+  state.tokens -= 1;
+  return true;
+}
 
 // ── REST API ──────────────────────────────────────────────
 
@@ -27,11 +86,24 @@ app.get('/health', async (_req, res) => {
   res.json({ status: 'ok', rooms: rooms.size, passages: count });
 });
 
-// CORS for client dev server
-app.use((_req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+// CORS — pinned to the configured origin in production, permissive in dev.
+app.use((req, res, next) => {
+  const origin = req.get('origin');
+  if (IS_PROD) {
+    if (origin === ALLOWED_ORIGIN) {
+      res.header('Access-Control-Allow-Origin', ALLOWED_ORIGIN);
+      res.header('Vary', 'Origin');
+    }
+  } else {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+    res.header('Vary', 'Origin');
+  }
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.header('Access-Control-Allow-Methods', 'GET, POST');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(204);
+    return;
+  }
   next();
 });
 
@@ -61,39 +133,25 @@ app.get('/passages/random', async (req, res) => {
 });
 
 // Add a new passage
-app.post('/passages', async (req, res) => {
-  const { id, title, text, difficulty, category } = req.body;
-  if (!id || !title || !text || !difficulty || !category) {
-    res.status(400).json({ error: 'Missing required fields: id, title, text, difficulty, category' });
-    return;
-  }
-  const validDifficulties = ['easy', 'medium', 'hard'];
-  const validCategories = ['sentences', 'pop-culture', 'random-words'];
-  if (!validDifficulties.includes(difficulty)) {
-    res.status(400).json({ error: `difficulty must be one of: ${validDifficulties.join(', ')}` });
-    return;
-  }
-  if (!validCategories.includes(category)) {
-    res.status(400).json({ error: `category must be one of: ${validCategories.join(', ')}` });
-    return;
-  }
-  try {
-    await insertPassage({ id, title, text, difficulty, category });
-    res.status(201).json({ id, title, text, difficulty, category });
-  } catch (err: any) {
-    if (err.code === '23505') { // PostgreSQL unique violation
-      res.status(409).json({ error: 'A passage with that id already exists' });
-    } else {
-      res.status(500).json({ error: 'Failed to insert passage' });
-    }
-  }
-});
+// NOTE: POST /passages was removed. Passages are seeded via the startup seed
+// (see server/src/db.ts — seedIfEmpty) and should not be client-mutable.
 
 // Submit a race result
-app.post('/results', async (req, res) => {
+app.post('/results', writeLimiter, async (req, res) => {
   const { playerName, wpm, accuracy, fireStreak, difficulty, category } = req.body;
   if (!playerName || wpm == null || accuracy == null || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  // Plausibility guardrails — reject obvious cheats / garbage submissions.
+  // World record typing WPM is ~220; we allow a generous ceiling. Min accuracy
+  // of 70% blocks the "mash one key" exploit (which yields ~0% accuracy with
+  // net-WPM client, but this catches forked clients that still submit gross WPM).
+  const wpmNum = Number(wpm);
+  const accNum = Number(accuracy);
+  if (!Number.isFinite(wpmNum) || !Number.isFinite(accNum) ||
+      wpmNum < 0 || wpmNum > 250 || accNum < 70 || accNum > 100) {
+    res.status(422).json({ error: 'Result rejected: implausible WPM or accuracy' });
     return;
   }
   // Extract Clerk user ID if authenticated
@@ -139,7 +197,7 @@ app.get('/leaderboard/monthly', async (_req, res) => {
 });
 
 // Create a share link
-app.post('/api/share', async (req, res) => {
+app.post('/api/share', writeLimiter, async (req, res) => {
   const { wpm, accuracy, fireStreak, difficulty, category, rankLabel, playerName } = req.body;
   if (wpm == null || accuracy == null || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields' });
@@ -191,10 +249,20 @@ app.get('/share/:id', async (req, res) => {
       res.status(404).send('Share not found');
       return;
     }
-    const title = `${share.player_name || 'A racer'} scored ${share.wpm} WPM on TypeRace`;
-    const description = `${share.accuracy}% accuracy | ${share.difficulty.toUpperCase()} | Rank ${share.rank_label || '?'}${share.fire_streak > 0 ? ` | ${share.fire_streak} streak` : ''}`;
-    const siteUrl = process.env.PUBLIC_URL || `https://${req.get('host')}`;
-    const ogImage = `${siteUrl}/api/share/${share.id}/og.svg`;
+    // All user-supplied fields must be escaped before HTML interpolation.
+    const playerName = escapeHtml(share.player_name || 'A racer');
+    const difficulty = escapeHtml(share.difficulty.toUpperCase());
+    const rankLabel = escapeHtml(share.rank_label || '?');
+    const wpmStr = String(Number(share.wpm) || 0);
+    const accStr = String(Number(share.accuracy) || 0);
+    const streakNum = Number(share.fire_streak) || 0;
+
+    const title = `${playerName} scored ${wpmStr} WPM on TypeRace`;
+    const description = `${accStr}% accuracy | ${difficulty} | Rank ${rankLabel}${streakNum > 0 ? ` | ${streakNum} streak` : ''}`;
+    // siteUrl must come from config, never a client-controlled Host header.
+    const siteUrl = escapeHtml(process.env.PUBLIC_URL || ALLOWED_ORIGIN);
+    const shareId = escapeHtml(share.id);
+    const ogImage = `${siteUrl}/api/share/${shareId}/og.svg`;
 
     res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -207,7 +275,7 @@ app.get('/share/:id', async (req, res) => {
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="${siteUrl}/share/${share.id}">
+  <meta property="og:url" content="${siteUrl}/share/${shareId}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="${description}">
@@ -217,8 +285,8 @@ app.get('/share/:id', async (req, res) => {
 </head>
 <body style="background:#060a14;color:#e0e6f0;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
   <div style="text-align:center">
-    <h1 style="color:#00f0ff;font-size:3rem;margin:0">${share.wpm} WPM</h1>
-    <p style="color:#a0a8b8;font-size:1.2rem">${share.accuracy}% accuracy</p>
+    <h1 style="color:#00f0ff;font-size:3rem;margin:0">${wpmStr} WPM</h1>
+    <p style="color:#a0a8b8;font-size:1.2rem">${accStr}% accuracy</p>
     <p style="color:#a0a8b8">Redirecting to TypeRace...</p>
   </div>
 </body>
@@ -236,19 +304,26 @@ app.get('/api/share/:id/og.svg', async (req, res) => {
       res.status(404).send('Not found');
       return;
     }
+    // Escape all user-supplied fields for XML context (same rules work here).
+    const wpmStr = String(Number(share.wpm) || 0);
+    const accStr = String(Number(share.accuracy) || 0);
+    const streakStr = String(Number(share.fire_streak) || 0);
+    const rankLabel = escapeHtml(share.rank_label || '?');
+    const playerName = share.player_name ? escapeHtml(share.player_name) : '';
+    const difficulty = escapeHtml(share.difficulty.toUpperCase());
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <rect width="1200" height="630" fill="#060a14"/>
   <rect x="40" y="40" width="1120" height="550" rx="16" fill="#0d1321" stroke="#00f0ff" stroke-opacity="0.15" stroke-width="2"/>
   <text x="600" y="120" text-anchor="middle" fill="#00f0ff" font-family="monospace" font-size="24" letter-spacing="8" opacity="0.6">TYPERACE</text>
-  <text x="600" y="260" text-anchor="middle" fill="#e0e6f0" font-family="sans-serif" font-weight="bold" font-size="120">${share.wpm}</text>
+  <text x="600" y="260" text-anchor="middle" fill="#e0e6f0" font-family="sans-serif" font-weight="bold" font-size="120">${wpmStr}</text>
   <text x="600" y="310" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="28">WORDS PER MINUTE</text>
-  <text x="380" y="420" text-anchor="middle" fill="#00ff88" font-family="monospace" font-size="36">${share.accuracy}%</text>
+  <text x="380" y="420" text-anchor="middle" fill="#00ff88" font-family="monospace" font-size="36">${accStr}%</text>
   <text x="380" y="460" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="18">ACCURACY</text>
-  <text x="600" y="420" text-anchor="middle" fill="#ffaa00" font-family="sans-serif" font-weight="bold" font-size="48">${share.rank_label || '?'}</text>
+  <text x="600" y="420" text-anchor="middle" fill="#ffaa00" font-family="sans-serif" font-weight="bold" font-size="48">${rankLabel}</text>
   <text x="600" y="460" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="18">RANK</text>
-  <text x="820" y="420" text-anchor="middle" fill="#ff0080" font-family="monospace" font-size="36">${share.fire_streak}</text>
+  <text x="820" y="420" text-anchor="middle" fill="#ff0080" font-family="monospace" font-size="36">${streakStr}</text>
   <text x="820" y="460" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="18">STREAK</text>
-  ${share.player_name ? `<text x="600" y="550" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="22">${share.player_name} | ${share.difficulty.toUpperCase()}</text>` : ''}
+  ${playerName ? `<text x="600" y="550" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="22">${playerName} | ${difficulty}</text>` : ''}
 </svg>`;
     res.setHeader('Content-Type', 'image/svg+xml');
     res.setHeader('Cache-Control', 'public, max-age=86400');
@@ -312,8 +387,37 @@ function send(ws: WebSocket, msg: object): void {
   }
 }
 
-wss.on('connection', (ws: WebSocket) => {
+wss.on('connection', (ws: WebSocket, req) => {
+  // Global connection cap — reject loudly so clients can surface a message.
+  if (wss.clients.size > MAX_WS_CONNECTIONS) {
+    send(ws, { type: 'error', message: 'Server at capacity, try again shortly.' });
+    ws.close(1013, 'Overloaded');
+    return;
+  }
+
+  // Per-IP connection cap (resolve real IP from trust-proxy X-Forwarded-For).
+  const fwd = req.headers['x-forwarded-for'];
+  const ip = (typeof fwd === 'string' ? fwd.split(',')[0].trim() : req.socket.remoteAddress) || 'unknown';
+  const ipCount = wsIpCounts.get(ip) || 0;
+  if (ipCount >= MAX_WS_PER_IP) {
+    send(ws, { type: 'error', message: 'Too many connections from this network.' });
+    ws.close(1008, 'Per-IP limit');
+    return;
+  }
+  wsIpCounts.set(ip, ipCount + 1);
+  wsLimits.set(ws, { tokens: WS_MSG_PER_SECOND, lastRefill: Date.now(), ip });
+
   ws.on('message', (raw: Buffer) => {
+    // Reject oversized payloads before parsing.
+    if (raw.length > 4096) {
+      send(ws, { type: 'error', message: 'Message too large' });
+      return;
+    }
+    if (!allowWsMessage(ws)) {
+      send(ws, { type: 'error', message: 'Message rate limit exceeded' });
+      return;
+    }
+
     let msg: ClientMessage;
     try {
       msg = JSON.parse(raw.toString());
@@ -422,6 +526,12 @@ wss.on('connection', (ws: WebSocket) => {
 
   ws.on('close', () => {
     handleLeave(ws);
+    const state = wsLimits.get(ws);
+    if (state) {
+      const current = wsIpCounts.get(state.ip) || 0;
+      if (current <= 1) wsIpCounts.delete(state.ip);
+      else wsIpCounts.set(state.ip, current - 1);
+    }
   });
 });
 
