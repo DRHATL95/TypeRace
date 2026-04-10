@@ -84,3 +84,21 @@ export async function fetchTodayLeaderboard(): Promise<TodayLeaderboard | null> 
     return null;
   }
 }
+
+export interface MonthlyLeaderboardEntry {
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+  race_count: number;
+}
+
+export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
+  try {
+    const res = await fetch(`${API_BASE}/leaderboard/monthly`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}

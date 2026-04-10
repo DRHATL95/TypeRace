@@ -6,7 +6,7 @@ import { clerkMiddleware, getAuth, verifyToken } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
-import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard, createShare, getShare } from './db';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, createShare, getShare } from './db';
 import { nanoid } from 'nanoid';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -125,6 +125,16 @@ app.get('/leaderboard/today', async (_req, res) => {
     res.json(leaderboard);
   } catch {
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
+  }
+});
+
+// Get monthly leaderboard (best WPM per unique player, top 100)
+app.get('/leaderboard/monthly', async (_req, res) => {
+  try {
+    const entries = await getMonthlyLeaderboard();
+    res.json(entries);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch monthly leaderboard' });
   }
 });
 

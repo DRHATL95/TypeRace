@@ -7,7 +7,7 @@ import Lobby from './components/Lobby';
 import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
-import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard } from './utils/api';
+import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard, fetchMonthlyLeaderboard, MonthlyLeaderboardEntry } from './utils/api';
 import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
 import { useAuthToken } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
@@ -47,6 +47,7 @@ function App() {
     const [joinCode, setJoinCode] = useState<string | null>(null);
     const [todaysBest, setTodaysBest] = useState(getTodaysBest());
     const [leaderboard, setLeaderboard] = useState<TodayLeaderboard | null>(null);
+    const [monthlyLeaderboard, setMonthlyLeaderboard] = useState<MonthlyLeaderboardEntry[]>([]);
 
     // Detect /join/:code URL on mount
     useEffect(() => {
@@ -117,6 +118,7 @@ function App() {
         if (gameState === 'welcome') {
             setTodaysBest(getTodaysBest());
             fetchTodayLeaderboard().then(lb => setLeaderboard(lb));
+            fetchMonthlyLeaderboard().then(ml => setMonthlyLeaderboard(ml));
         }
     }, [gameState]);
 
@@ -270,6 +272,7 @@ function App() {
                     onCategoryChange={handleCategoryChange}
                     todaysBest={todaysBest ? { wpm: todaysBest.wpm, accuracy: todaysBest.accuracy, fireStreak: todaysBest.fireStreak } : null}
                     leaderboard={leaderboard}
+                    monthlyLeaderboard={monthlyLeaderboard}
                 />
             )}
 

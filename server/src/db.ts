@@ -141,6 +141,37 @@ export async function getShare(id: string): Promise<ShareData | null> {
   return rows[0] || null;
 }
 
+// ── Monthly Leaderboard ─────────────────────────────────
+
+export interface MonthlyLeaderboardEntry {
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+  race_count: number;
+}
+
+export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
+  const { rows } = await pool.query<MonthlyLeaderboardEntry>(`
+    SELECT DISTINCT ON (COALESCE(user_id, player_name))
+      player_name,
+      wpm,
+      accuracy,
+      fire_streak,
+      (SELECT COUNT(*)::int FROM race_results r2
+         WHERE r2.created_at >= date_trunc('month', CURRENT_DATE)
+           AND COALESCE(r2.user_id, r2.player_name) = COALESCE(race_results.user_id, race_results.player_name)
+      ) AS race_count
+    FROM race_results
+    WHERE created_at >= date_trunc('month', CURRENT_DATE)
+    ORDER BY COALESCE(user_id, player_name), wpm DESC
+  `);
+
+  // Sort by wpm descending and limit to 100
+  rows.sort((a, b) => b.wpm - a.wpm);
+  return rows.slice(0, 100);
+}
+
 // ── Multiplayer Results ──────────────────────────────────
 
 export async function insertMultiplayerResult(result: {

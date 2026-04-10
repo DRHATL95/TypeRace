@@ -169,9 +169,45 @@
     box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
 }
 
+/* ── Ranked locked state + tooltip ────────────────────── */
+.mp-mode-ranked-wrap {
+    flex: 1;
+    position: relative;
+}
+
+.mp-mode-ranked-wrap .mp-mode-btn {
+    width: 100%;
+}
+
 .mp-mode-btn:disabled {
-    opacity: 0.3;
+    opacity: 0.25;
     cursor: not-allowed;
+}
+
+.mp-mode-btn.locked {
+    border-style: dashed;
+}
+
+.mp-lock-icon {
+    font-size: 0.6rem;
+    margin-right: 0.3rem;
+    filter: grayscale(1);
+}
+
+.mp-mode-tooltip {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.08em;
+    text-align: center;
+    margin-top: 0.4rem;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.mp-mode-ranked-wrap:hover .mp-mode-tooltip {
+    opacity: 1;
 }
 
 .mp-actions {

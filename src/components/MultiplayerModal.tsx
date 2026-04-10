@@ -81,14 +81,19 @@ const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
                 >
                   CASUAL
                 </button>
-                <button
-                  className={`mp-mode-btn${roomMode === 'ranked' ? ' active' : ''}`}
-                  onClick={() => setRoomMode('ranked')}
-                  disabled={!isSignedIn}
-                  title={!isSignedIn ? 'Sign in required' : 'Affects your rating'}
-                >
-                  RANKED
-                </button>
+                <div className="mp-mode-ranked-wrap">
+                  <button
+                    className={`mp-mode-btn${roomMode === 'ranked' ? ' active' : ''}${!isSignedIn ? ' locked' : ''}`}
+                    onClick={() => isSignedIn && setRoomMode('ranked')}
+                    disabled={!isSignedIn}
+                  >
+                    {!isSignedIn && <span className="mp-lock-icon">&#x1F512;</span>}
+                    RANKED
+                  </button>
+                  {!isSignedIn && (
+                    <span className="mp-mode-tooltip">Sign in to unlock ranked play</span>
+                  )}
+                </div>
               </div>
             </div>
 

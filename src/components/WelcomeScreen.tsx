@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { SignInButton, UserButton } from '@clerk/clerk-react';
 import { useAppAuth } from '../hooks/useAuthToken';
 import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
-import { TodayLeaderboard } from '../utils/api';
+import { TodayLeaderboard, MonthlyLeaderboardEntry } from '../utils/api';
 import { startMenuMusic, stopMenuMusic } from '../utils/menuMusic';
 import { getMuted, toggleMute, getVolumeLevel, setVolumeLevel } from '../utils/audioEngine';
 import './WelcomeScreen.css';
@@ -21,6 +21,7 @@ interface WelcomeScreenProps {
     onCategoryChange: (c: PassageCategory) => void;
     todaysBest: { wpm: number; accuracy: number; fireStreak: number } | null;
     leaderboard: TodayLeaderboard | null;
+    monthlyLeaderboard: MonthlyLeaderboardEntry[];
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -37,6 +38,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onCategoryChange,
     todaysBest,
     leaderboard,
+    monthlyLeaderboard,
 }) => {
     const { isSignedIn, userName } = useAppAuth();
     const clerkAvailable = !!process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
@@ -72,15 +74,23 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <div className="welcome-grid-bg" />
 
             <div className="welcome-content">
+                <header className="welcome-hero">
+                    <div className="hero-label">TYPING VELOCITY ENGINE</div>
+                    <h1 className="hero-title">
+                        <span className="hero-title-line">TYPE</span>
+                        <span className="hero-title-line accent">RACE</span>
+                    </h1>
+                </header>
+
                 {clerkAvailable && (
-                    <div className="auth-corner">
+                    <div className="auth-bar">
                         {isSignedIn ? (
                             <div className="auth-user">
                                 <span className="auth-name">{userName || 'Racer'}</span>
                                 <UserButton
                                     appearance={{
                                         elements: {
-                                            avatarBox: { width: 32, height: 32 },
+                                            avatarBox: { width: 28, height: 28 },
                                         },
                                     }}
                                 />
@@ -92,14 +102,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         )}
                     </div>
                 )}
-
-                <header className="welcome-hero">
-                    <div className="hero-label">TYPING VELOCITY ENGINE</div>
-                    <h1 className="hero-title">
-                        <span className="hero-title-line">TYPE</span>
-                        <span className="hero-title-line accent">RACE</span>
-                    </h1>
-                </header>
 
                 {dailyStreak.count > 0 && (
                     <div className="daily-streak">
@@ -181,8 +183,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                             {leaderboard && leaderboard.topWpm.length > 0 ? (
                                 <div className="global-top">
                                     {leaderboard.topWpm.map((entry, i) => (
-                                        <div key={i} className="lb-entry">
-                                            <span className="lb-rank">#{i + 1}</span>
+                                        <div key={i} className={`lb-entry${i === 0 ? ' lb-champion' : ''}`}>
+                                            <span className="lb-rank">{i === 0 ? '\u{1F451}' : `#${i + 1}`}</span>
                                             <span className="lb-name">{entry.player_name}</span>
                                             <span className="lb-wpm">{entry.wpm}</span>
                                         </div>
@@ -196,6 +198,22 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {monthlyLeaderboard.length > 0 && (
+                    <div className="monthly-leaderboard">
+                        <div className="monthly-label">MONTHLY TOP 100</div>
+                        <div className="monthly-list">
+                            {monthlyLeaderboard.slice(0, 10).map((entry, i) => (
+                                <div key={i} className={`lb-entry${i === 0 ? ' lb-champion' : ''}`}>
+                                    <span className="lb-rank">{i === 0 ? '\u{1F451}' : `#${i + 1}`}</span>
+                                    <span className="lb-name">{entry.player_name}</span>
+                                    <span className="lb-wpm">{entry.wpm}</span>
+                                    <span className="lb-races">{entry.race_count} race{entry.race_count !== 1 ? 's' : ''}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="welcome-options">
                     <label className="ghost-toggle">

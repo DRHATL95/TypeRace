@@ -23,12 +23,8 @@
     animation: gridScroll 4s linear infinite;
 }
 
-/* ── Auth corner ───────────────────────────────────────── */
-.auth-corner {
-    position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    z-index: 10;
+/* ── Auth bar (inline, centered) ──────────────────────── */
+.auth-bar {
     animation: fadeUp 0.8s ease-out 0.1s both;
 }
 
@@ -568,6 +564,56 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;
+}
+
+.lb-races {
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── Champion (#1) highlight ─────────────────────────── */
+.lb-entry.lb-champion {
+    background: rgba(0, 240, 255, 0.06);
+    border: 1px solid rgba(0, 240, 255, 0.12);
+    border-radius: 2px;
+    padding: 0.3rem 0.5rem;
+    margin: -0.15rem -0.5rem 0.15rem;
+}
+
+.lb-entry.lb-champion .lb-name {
+    color: var(--cyan);
+    font-weight: 600;
+}
+
+.lb-entry.lb-champion .lb-wpm {
+    text-shadow: 0 0 8px var(--cyan-dim);
+}
+
+/* ── Monthly Leaderboard ─────────────────────────────── */
+.monthly-leaderboard {
+    width: 100%;
+    padding: 1.25rem 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 8px;
+    animation: fadeUp 0.8s ease-out 0.5s both;
+}
+
+.monthly-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    color: var(--magenta);
+    text-align: center;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+}
+
+.monthly-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
 }
 
 /* ── Responsive ────────────────────────────────────────── */
