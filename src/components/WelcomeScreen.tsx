@@ -184,7 +184,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                                 <div className="global-top">
                                     {leaderboard.topWpm.map((entry, i) => (
                                         <div key={i} className={`lb-entry${i === 0 ? ' lb-champion' : ''}`}>
-                                            <span className="lb-rank">{i === 0 ? '\u{1F451}' : `#${i + 1}`}</span>
+                                            <span className="lb-rank">#{i + 1}</span>
                                             <span className="lb-name">{entry.player_name}</span>
                                             <span className="lb-wpm">{entry.wpm}</span>
                                         </div>
@@ -205,7 +205,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         <div className="monthly-list">
                             {monthlyLeaderboard.slice(0, 10).map((entry, i) => (
                                 <div key={i} className={`lb-entry${i === 0 ? ' lb-champion' : ''}`}>
-                                    <span className="lb-rank">{i === 0 ? '\u{1F451}' : `#${i + 1}`}</span>
+                                    <span className="lb-rank">#{i + 1}</span>
                                     <span className="lb-name">{entry.player_name}</span>
                                     <span className="lb-wpm">{entry.wpm}</span>
                                     <span className="lb-races">{entry.race_count} race{entry.race_count !== 1 ? 's' : ''}</span>
