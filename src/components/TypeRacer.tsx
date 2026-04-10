@@ -71,7 +71,9 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         const now = stats.isComplete ? (stats.endTime || Date.now()) : Date.now();
         const timeElapsed = (now - stats.startTime) / 1000;
         if (timeElapsed === 0) return 0;
-        return Math.round(((stats.charactersTyped / 5) / (timeElapsed / 60)) * 100) / 100;
+        // Net WPM: only correct characters count
+        const correct = Math.max(stats.charactersTyped - stats.errors, 0);
+        return Math.round(((correct / 5) / (timeElapsed / 60)) * 100) / 100;
     })();
 
     const speedTier = useSpeedTier(currentWPM);
@@ -215,10 +217,11 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
             errors: isCorrect ? prev.errors : prev.errors + 1
         }));
 
-        // Multiplayer progress
+        // Multiplayer progress — broadcast net WPM so opponents see real performance
         if (onProgress) {
             const timeElapsed = (Date.now() - stats.startTime) / 1000;
-            const wpm = timeElapsed > 0 ? Math.round(((currentCharIndex + 1) / 5) / (timeElapsed / 60)) : 0;
+            const correct = Math.max((currentCharIndex + 1) - newErrors, 0);
+            const wpm = timeElapsed > 0 ? Math.round((correct / 5) / (timeElapsed / 60)) : 0;
             onProgress(currentCharIndex + 1, newErrors, wpm);
         }
 

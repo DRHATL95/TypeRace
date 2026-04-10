@@ -213,6 +213,14 @@ function App() {
         setGameState('racing');
     }, [difficulty, category, mp, getPassage]);
 
+    const retryPassage = useCallback(() => {
+        setRaceResult(null);
+        setIsNewBest(false);
+        // New object reference forces TypeRacer's reset effect to re-run
+        setPassage(prev => ({ ...prev }));
+        setGameState('racing');
+    }, []);
+
     const returnToWelcome = useCallback(() => {
         if (mp.state !== 'disconnected') {
             mp.leave();
@@ -309,6 +317,7 @@ function App() {
                     fireStreak={lastFireStreak}
                     onRestart={restartRace}
                     onNewRace={returnToWelcome}
+                    onRetryPassage={mp.state === 'disconnected' ? retryPassage : undefined}
                     podium={mp.state === 'finished' ? mp.raceResults : undefined}
                     onLeaveRoom={mp.state === 'finished' ? () => { mp.leave(); returnToWelcome(); } : undefined}
                     rematchVoters={mp.state === 'finished' ? mp.rematchVoters : undefined}

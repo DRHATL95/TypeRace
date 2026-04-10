@@ -1,8 +1,9 @@
 import { RaceResult, TypingStats, CharacterStatus } from '../types/GameTypes';
 
-export const calculateWPM = (charactersTyped: number, timeElapsed: number): number => {
-  // WPM calculation: (characters / 5) / (time in minutes)
-  const words = charactersTyped / 5;
+export const calculateWPM = (correctCharacters: number, timeElapsed: number): number => {
+  // Net WPM: only correct characters count. Spamming one key gives ~0 WPM.
+  if (timeElapsed <= 0 || correctCharacters <= 0) return 0;
+  const words = correctCharacters / 5;
   const minutes = timeElapsed / 60;
   return Math.round((words / minutes) * 100) / 100;
 };
@@ -15,7 +16,8 @@ export const calculateAccuracy = (charactersTyped: number, errors: number): numb
 
 export const calculateRaceResult = (stats: TypingStats, textLength: number): RaceResult => {
   const timeElapsed = (stats.endTime! - stats.startTime) / 1000; // Convert to seconds
-  const wpm = calculateWPM(stats.charactersTyped, timeElapsed);
+  const correctCharacters = Math.max(stats.charactersTyped - stats.errors, 0);
+  const wpm = calculateWPM(correctCharacters, timeElapsed);
   const accuracy = calculateAccuracy(stats.charactersTyped, stats.errors);
   const completionPercentage = Math.round((stats.charactersTyped / textLength) * 100 * 100) / 100;
 

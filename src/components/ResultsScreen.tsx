@@ -18,6 +18,7 @@ interface ResultsScreenProps {
     fireStreak: number;
     onRestart: () => void;
     onNewRace: () => void;
+    onRetryPassage?: () => void;
     podium?: PlayerResult[];
     onLeaveRoom?: () => void;
     rematchVoters?: string[];
@@ -50,7 +51,7 @@ const CATEGORIES: { value: PassageCategory; label: string }[] = [
 
 const API_BASE = process.env.NODE_ENV === 'production' ? '' : `http://${window.location.hostname}:3001`;
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
     const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
     const rank = getRank(result.wpm, result.accuracy);
@@ -223,13 +224,18 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
 
                 <div className="results-actions">
                     <button onClick={onRestart} className="action-btn action-primary">
-                        RACE AGAIN
+                        {podium ? 'REMATCH' : 'NEW PASSAGE'}
                     </button>
+                    {!podium && onRetryPassage && (
+                        <button onClick={onRetryPassage} className="action-btn action-secondary">
+                            RETRY
+                        </button>
+                    )}
                     <button onClick={handleShare} className="action-btn action-share" disabled={shareState === 'sharing'}>
                         {shareState === 'copied' ? 'LINK COPIED!' : shareState === 'sharing' ? 'SHARING...' : shareState === 'error' ? 'FAILED' : 'SHARE'}
                     </button>
                     <button onClick={onLeaveRoom || onNewRace} className="action-btn action-ghost">
-                        {onLeaveRoom ? 'LEAVE ROOM' : 'NEW TEXT'}
+                        {onLeaveRoom ? 'LEAVE ROOM' : 'HOME'}
                     </button>
                 </div>
             </div>

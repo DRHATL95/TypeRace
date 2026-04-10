@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 const PLAYER_COLORS = ['#00f0ff', '#ff0080', '#00ff88', '#ffaa00'];
 const MAX_PLAYERS = 4;
 const FINISH_TIMEOUT_MS = 60_000;
+const RECENT_PASSAGE_MEMORY = 3; // don't repeat any of the last N passages on rematch
 
 const FALLBACK_PASSAGE: TextPassage = {
   id: 'fallback', title: 'Fallback', text: 'The quick brown fox jumps over the lazy dog.',
@@ -51,6 +52,8 @@ export class Room {
   private finishTimer: NodeJS.Timeout | null = null;
   private rematchTimer: NodeJS.Timeout | null = null;
   private rematchDeadline: NodeJS.Timeout | null = null;
+  /** Ring buffer of the most recent passage ids shown in this room, newest last. */
+  private recentPassageIds: string[] = [];
 
   category: PassageCategory;
 
@@ -60,6 +63,7 @@ export class Room {
     this.category = category;
     this.passage = passage;
     this.mode = mode;
+    this.recentPassageIds.push(passage.id);
   }
 
   addPlayer(ws: WebSocket, name: string, userId: string | null = null): boolean {
@@ -288,7 +292,14 @@ export class Room {
   private async resetForRematch(): Promise<void> {
     this.clearRematchTimers();
     this.category = Room.randomCategory();
-    this.passage = await getRandomPassage(this.difficulty, this.category) || this.passage;
+    const next = await getRandomPassage(this.difficulty, this.category, this.recentPassageIds);
+    if (next) {
+      this.passage = next;
+      this.recentPassageIds.push(next.id);
+      if (this.recentPassageIds.length > RECENT_PASSAGE_MEMORY) {
+        this.recentPassageIds.shift();
+      }
+    }
     this.state = 'lobby';
     if (this.finishTimer) clearTimeout(this.finishTimer);
     this.finishTimer = null;
