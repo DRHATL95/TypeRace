@@ -1,11 +1,11 @@
-/* ── Fire Streak Banner ────────────────────────────────── */
+/* ── Fire Streak Banner ── Neon Theme ─────────────────── */
 
 .fire-banner {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 0.4rem 0;
+    padding: 0.35rem 0;
     text-align: center;
     animation: fireAppear 0.3s ease-out;
 }
@@ -13,50 +13,61 @@
 .fire-label {
     font-family: var(--font-display);
     font-weight: 700;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.25em;
     text-transform: uppercase;
 }
 
 .fire-count {
     font-family: var(--font-mono);
-    font-size: 0.75em;
-    opacity: 0.6;
+    font-size: 0.7em;
+    opacity: 0.5;
     color: inherit;
 }
 
 /* ── Tier variants ─────────────────────────────────────── */
 
+/* FIRE: subtle cyan accent */
 .fire-fire .fire-label {
-    font-size: 1rem;
-    color: #ff6b00;
-    text-shadow: 0 0 10px rgba(255, 107, 0, 0.5);
+    font-size: 0.75rem;
+    color: var(--cyan);
+    text-shadow: 0 0 8px var(--cyan-dim);
+    opacity: 0.7;
 }
 
+/* BLAZING: stronger magenta accent */
 .fire-blazing .fire-label {
-    font-size: 1.15rem;
-    color: #ff4400;
-    text-shadow: 0 0 16px rgba(255, 68, 0, 0.6), 0 0 32px rgba(255, 68, 0, 0.3);
+    font-size: 0.85rem;
+    color: var(--magenta);
+    text-shadow: 0 0 12px var(--magenta-dim);
+    opacity: 0.85;
 }
 
+/* UNSTOPPABLE: full intensity cyan-magenta pulse */
 .fire-unstoppable .fire-label {
-    font-size: 1.3rem;
-    color: #ff2200;
-    text-shadow: 0 0 20px rgba(255, 34, 0, 0.7), 0 0 40px rgba(255, 34, 0, 0.4), 0 0 60px rgba(255, 34, 0, 0.2);
-    animation: firePulse 0.5s ease-in-out infinite;
+    font-size: 0.95rem;
+    color: var(--cyan);
+    text-shadow: 0 0 16px var(--cyan-dim), 0 0 32px var(--magenta-dim);
+    animation: streakPulse 1.5s ease-in-out infinite;
 }
 
 @keyframes fireAppear {
     from {
         opacity: 0;
-        transform: scale(0.8) translateY(8px);
+        transform: translateY(6px);
     }
     to {
         opacity: 1;
-        transform: scale(1) translateY(0);
+        transform: translateY(0);
     }
 }
 
-@keyframes firePulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%      { opacity: 0.85; transform: scale(1.05); }
+@keyframes streakPulse {
+    0%, 100% {
+        opacity: 1;
+        text-shadow: 0 0 16px var(--cyan-dim), 0 0 32px var(--magenta-dim);
+    }
+    50% {
+        opacity: 0.8;
+        text-shadow: 0 0 24px var(--cyan-dim), 0 0 48px var(--magenta-dim);
+    }
 }

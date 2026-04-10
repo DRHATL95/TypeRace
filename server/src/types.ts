@@ -10,10 +10,14 @@ export interface TextPassage {
   category: PassageCategory;
 }
 
+export type RoomMode = 'casual' | 'ranked';
+
 export interface PlayerInfo {
   name: string;
   color: string;
   isCreator: boolean;
+  userId: string | null;
+  isGuest: boolean;
 }
 
 export interface PlayerProgress {
@@ -44,8 +48,8 @@ export interface PlayerResult {
 
 // Client → Server
 export type ClientMessage =
-  | { type: 'create'; playerName: string; difficulty: Difficulty; category?: PassageCategory }
-  | { type: 'join'; roomCode: string; playerName: string }
+  | { type: 'create'; playerName: string; difficulty: Difficulty; category?: PassageCategory; authToken?: string; mode?: RoomMode }
+  | { type: 'join'; roomCode: string; playerName: string; authToken?: string }
   | { type: 'start' }
   | { type: 'progress'; currentIndex: number; errors: number; wpm: number }
   | { type: 'finished'; result: RaceResult }
@@ -54,7 +58,7 @@ export type ClientMessage =
 
 // Server → Client
 export type ServerMessage =
-  | { type: 'room-created'; roomCode: string; passage: TextPassage }
+  | { type: 'room-created'; roomCode: string; passage: TextPassage; mode: RoomMode }
   | { type: 'player-joined'; players: PlayerInfo[] }
   | { type: 'player-left'; players: PlayerInfo[] }
   | { type: 'countdown'; seconds: number }

@@ -38,6 +38,62 @@
     margin-bottom: 2rem;
 }
 
+/* ── Mode badge ───────────────────────────────────────── */
+.lobby-mode-badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2px;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--text-ghost);
+}
+
+.lobby-mode-badge.ranked {
+    color: var(--amber);
+    border-color: var(--amber);
+    box-shadow: 0 0 8px rgba(255, 170, 0, 0.15);
+}
+
+/* ── Player auth indicators ──────────────────────────── */
+.lobby-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.lobby-verified-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 0.5rem;
+    flex-shrink: 0;
+}
+
+.lobby-guest-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(160, 168, 184, 0.08);
+    border: 1px solid var(--text-ghost);
+    color: var(--text-ghost);
+    font-size: 0.45rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
 .lobby-copy-link {
     font-family: var(--font-mono);
     font-size: 0.65rem;

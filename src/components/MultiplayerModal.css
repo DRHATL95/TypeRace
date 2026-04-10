@@ -81,11 +81,97 @@
 }
 
 .mp-input-code {
-    text-transform: uppercase;
-    letter-spacing: 0.15em;
+    text-transform: lowercase;
+    letter-spacing: 0.1em;
     text-align: center;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
+}
+
+/* ── Name row + auth badge ──────────────────────────────── */
+.mp-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.mp-name-row .mp-input {
+    flex: 1;
+}
+
+.mp-auth-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(0, 255, 136, 0.1);
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.mp-auth-hint {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    margin-top: 0.35rem;
+    opacity: 0.8;
+}
+
+.mp-guest-hint {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    color: var(--text-ghost);
+    letter-spacing: 0.1em;
+    margin-top: 0.35rem;
+}
+
+/* ── Mode picker ────────────────────────────────────────── */
+.mp-mode-picker {
+    margin-bottom: 1.25rem;
+}
+
+.mp-mode-buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+
+.mp-mode-btn {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    padding: 0.55rem 0.75rem;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--text-ghost);
+}
+
+.mp-mode-btn:hover:not(:disabled) {
+    color: var(--text-primary);
+    border-color: var(--text-secondary);
+}
+
+.mp-mode-btn.active {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    box-shadow: 0 0 8px rgba(0, 255, 255, 0.15);
+}
+
+.mp-mode-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
 .mp-actions {

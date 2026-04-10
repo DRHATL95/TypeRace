@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
-import { TextPassage, PlayerInfo, PlayerProgress, PlayerResult, RaceResult, Difficulty, PassageCategory } from './types';
-import { getRandomPassage } from './db';
+import { TextPassage, PlayerInfo, PlayerProgress, PlayerResult, RaceResult, Difficulty, PassageCategory, RoomMode } from './types';
+import { getRandomPassage, insertMultiplayerResult } from './db';
+import { nanoid } from 'nanoid';
 
 const PLAYER_COLORS = ['#00f0ff', '#ff0080', '#00ff88', '#ffaa00'];
 const MAX_PLAYERS = 4;
@@ -16,6 +17,8 @@ interface Player {
   name: string;
   color: string;
   isCreator: boolean;
+  userId: string | null;
+  isGuest: boolean;
   progress: PlayerProgress;
   result: RaceResult | null;
   wantsRematch: boolean;
@@ -31,15 +34,16 @@ export class Room {
   }
 
   /** Create a room with an async passage fetch */
-  static async create(code: string, difficulty: Difficulty): Promise<Room> {
+  static async create(code: string, difficulty: Difficulty, mode: RoomMode = 'casual'): Promise<Room> {
     const category = Room.randomCategory();
     const passage = await getRandomPassage(difficulty, category) || FALLBACK_PASSAGE;
-    return new Room(code, difficulty, category, passage);
+    return new Room(code, difficulty, category, passage, mode);
   }
 
   code: string;
   difficulty: Difficulty;
   passage: TextPassage;
+  mode: RoomMode;
   players: Map<WebSocket, Player> = new Map();
   state: RoomState = 'lobby';
   lastActivity: number = Date.now();
@@ -50,16 +54,20 @@ export class Room {
 
   category: PassageCategory;
 
-  constructor(code: string, difficulty: Difficulty, category: PassageCategory, passage: TextPassage) {
+  constructor(code: string, difficulty: Difficulty, category: PassageCategory, passage: TextPassage, mode: RoomMode = 'casual') {
     this.code = code;
     this.difficulty = difficulty;
     this.category = category;
     this.passage = passage;
+    this.mode = mode;
   }
 
-  addPlayer(ws: WebSocket, name: string): boolean {
+  addPlayer(ws: WebSocket, name: string, userId: string | null = null): boolean {
     if (this.players.size >= MAX_PLAYERS) return false;
     if (this.state !== 'lobby') return false;
+
+    // Ranked rooms require authenticated players
+    if (this.mode === 'ranked' && !userId) return false;
 
     const isCreator = this.players.size === 0;
     const color = PLAYER_COLORS[this.players.size];
@@ -69,6 +77,8 @@ export class Room {
       name,
       color,
       isCreator,
+      userId,
+      isGuest: !userId,
       progress: {
         name,
         color,
@@ -95,6 +105,8 @@ export class Room {
       name: p.name,
       color: p.color,
       isCreator: p.isCreator,
+      userId: p.userId,
+      isGuest: p.isGuest,
     }));
   }
 
@@ -176,6 +188,25 @@ export class Room {
       }));
 
     this.broadcast({ type: 'race-end', results });
+
+    // Persist multiplayer results (fire-and-forget)
+    const matchId = nanoid(12);
+    for (const r of results) {
+      const player = Array.from(this.players.values()).find(p => p.name === r.name);
+      insertMultiplayerResult({
+        match_id: matchId,
+        room_code: this.code,
+        mode: this.mode,
+        user_id: player?.userId || null,
+        player_name: r.name,
+        wpm: r.result.wpm,
+        accuracy: r.result.accuracy,
+        fire_streak: 0,
+        rank: r.rank,
+        difficulty: this.difficulty,
+        category: this.category,
+      }).catch(() => {}); // fire-and-forget
+    }
   }
 
   requestRematch(ws: WebSocket): void {

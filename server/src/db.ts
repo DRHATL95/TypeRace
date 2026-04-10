@@ -1,5 +1,5 @@
 import pool from './db/pool';
-import { TextPassage, Difficulty, PassageCategory } from './types';
+import { TextPassage, Difficulty, PassageCategory, RoomMode } from './types';
 
 // ── Public API ────────────────────────────────────────────
 
@@ -139,6 +139,31 @@ export async function getShare(id: string): Promise<ShareData | null> {
     [id]
   );
   return rows[0] || null;
+}
+
+// ── Multiplayer Results ──────────────────────────────────
+
+export async function insertMultiplayerResult(result: {
+  match_id: string;
+  room_code: string;
+  mode: RoomMode;
+  user_id: string | null;
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+  rank: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+}): Promise<number> {
+  const { rows } = await pool.query<{ id: number }>(
+    `INSERT INTO multiplayer_results
+       (match_id, room_code, mode, user_id, player_name, wpm, accuracy, fire_streak, rank, difficulty, category)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+    [result.match_id, result.room_code, result.mode, result.user_id, result.player_name,
+     result.wpm, result.accuracy, result.fire_streak, result.rank, result.difficulty, result.category]
+  );
+  return rows[0].id;
 }
 
 // ── Seed ──────────────────────────────────────────────────

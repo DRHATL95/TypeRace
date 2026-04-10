@@ -8,7 +8,7 @@ import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard } from './utils/api';
-import { useMultiplayer } from './hooks/useMultiplayer';
+import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
 import { useAuthToken } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
 import {
@@ -230,15 +230,17 @@ function App() {
         setShowMPModal(true);
     }, []);
 
-    const handleCreateRoom = useCallback((playerName: string, diff: Difficulty) => {
-        mp.createRoom(playerName, diff);
+    const handleCreateRoom = useCallback(async (playerName: string, diff: Difficulty, mode: RoomMode) => {
+        const token = await getAuthToken();
+        mp.createRoom(playerName, diff, token, mode);
         setShowMPModal(false);
-    }, [mp]);
+    }, [mp, getAuthToken]);
 
-    const handleJoinRoom = useCallback((playerName: string, roomCode: string) => {
-        mp.joinRoom(playerName, roomCode);
+    const handleJoinRoom = useCallback(async (playerName: string, roomCode: string) => {
+        const token = await getAuthToken();
+        mp.joinRoom(playerName, roomCode, token);
         setShowMPModal(false);
-    }, [mp]);
+    }, [mp, getAuthToken]);
 
     const handleProgress = useCallback((currentIndex: number, errors: number, wpm: number) => {
         if (mp.state === 'racing') {
@@ -279,6 +281,7 @@ function App() {
                     onStart={mp.startRace}
                     onLeave={() => { mp.leave(); setGameState('welcome'); }}
                     countdownSeconds={isShowingMPCountdown ? mp.countdownSeconds : null}
+                    mode={mp.roomMode}
                 />
             )}
 

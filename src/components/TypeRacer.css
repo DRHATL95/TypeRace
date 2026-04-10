@@ -440,19 +440,22 @@
 }
 
 /* ── Fire tier effects on progress rail ────────────────── */
-.type-racer:has(.fire-blazing) .progress-fill,
-.type-racer:has(.fire-unstoppable) .progress-fill {
-    background: linear-gradient(90deg, var(--cyan), #ff6b00);
-    animation: firePulseRail 0.8s ease-in-out infinite;
+.type-racer:has(.fire-blazing) .progress-fill {
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
 }
 
-@keyframes firePulseRail {
-    0%, 100% { box-shadow: 0 0 12px rgba(255, 107, 0, 0.3); }
-    50%      { box-shadow: 0 0 24px rgba(255, 107, 0, 0.6); }
+.type-racer:has(.fire-unstoppable) .progress-fill {
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
+    animation: streakRailPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes streakRailPulse {
+    0%, 100% { box-shadow: 0 0 8px var(--cyan-dim); }
+    50%      { box-shadow: 0 0 16px var(--magenta-dim); }
 }
 
 .type-racer:has(.fire-unstoppable) .text-container {
-    box-shadow: inset 0 0 30px rgba(255, 107, 0, 0.05), 0 0 20px rgba(255, 107, 0, 0.08);
-    border: 1px solid rgba(255, 107, 0, 0.15);
+    box-shadow: inset 0 0 40px rgba(0, 240, 255, 0.03), 0 0 16px rgba(255, 0, 128, 0.04);
+    border: 1px solid rgba(0, 240, 255, 0.08);
     border-radius: var(--radius-md);
 }

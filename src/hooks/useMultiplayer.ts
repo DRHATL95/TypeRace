@@ -1,10 +1,14 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { RaceResult, TextPassage } from '../types/GameTypes';
 
+export type RoomMode = 'casual' | 'ranked';
+
 export interface PlayerInfo {
   name: string;
   color: string;
   isCreator: boolean;
+  userId: string | null;
+  isGuest: boolean;
 }
 
 export interface PlayerProgress {
@@ -33,6 +37,7 @@ const WS_URL = process.env.NODE_ENV === 'production'
 export function useMultiplayer() {
   const [state, setState] = useState<MultiplayerState>('disconnected');
   const [roomCode, setRoomCode] = useState<string | null>(null);
+  const [roomMode, setRoomMode] = useState<RoomMode>('casual');
   const [players, setPlayers] = useState<PlayerInfo[]>([]);
   const [playerProgress, setPlayerProgress] = useState<PlayerProgress[]>([]);
   const [raceResults, setRaceResults] = useState<PlayerResult[]>([]);
@@ -66,6 +71,7 @@ export function useMultiplayer() {
           case 'room-created':
             setRoomCode(msg.roomCode);
             setPassage(msg.passage);
+            setRoomMode(msg.mode || 'casual');
             setState('lobby');
             break;
           case 'player-joined':
@@ -114,27 +120,30 @@ export function useMultiplayer() {
     });
   }, []);
 
-  const createRoom = useCallback(async (playerName: string, difficulty: string) => {
+  const createRoom = useCallback(async (playerName: string, difficulty: string, authToken?: string | null, mode: RoomMode = 'casual') => {
     try {
       setError(null);
       await connect();
       setIsCreator(true);
-      // Small delay for ws readiness
       setTimeout(() => {
-        send({ type: 'create', playerName, difficulty });
+        const msg: Record<string, unknown> = { type: 'create', playerName, difficulty, mode };
+        if (authToken) msg.authToken = authToken;
+        send(msg);
       }, 100);
     } catch {
       setError('Could not connect to server');
     }
   }, [connect, send]);
 
-  const joinRoom = useCallback(async (playerName: string, code: string) => {
+  const joinRoom = useCallback(async (playerName: string, code: string, authToken?: string | null) => {
     try {
       setError(null);
       await connect();
       setIsCreator(false);
       setTimeout(() => {
-        send({ type: 'join', roomCode: code.toUpperCase(), playerName });
+        const msg: Record<string, unknown> = { type: 'join', roomCode: code, playerName };
+        if (authToken) msg.authToken = authToken;
+        send(msg);
       }, 100);
     } catch {
       setError('Could not connect to server');
@@ -155,6 +164,7 @@ export function useMultiplayer() {
     wsRef.current?.close();
     setState('disconnected');
     setRoomCode(null);
+    setRoomMode('casual');
     setPlayers([]);
     setPlayerProgress([]);
     setRaceResults([]);
@@ -169,7 +179,7 @@ export function useMultiplayer() {
   }, []);
 
   return {
-    state, roomCode, players, playerProgress, raceResults,
+    state, roomCode, roomMode, players, playerProgress, raceResults,
     countdownSeconds, passage, isCreator, error,
     rematchVoters, rematchSecondsLeft,
     createRoom, joinRoom, startRace: startRaceMP,

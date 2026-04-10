@@ -2,7 +2,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import WebSocket, { WebSocketServer } from 'ws';
-import { clerkMiddleware, getAuth } from '@clerk/express';
+import { clerkMiddleware, getAuth, verifyToken } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
@@ -283,6 +283,19 @@ function generateRoomCode(): string {
   return `${adj}-${noun}-${num}`;
 }
 
+/** Verify a Clerk JWT and return the userId, or null if invalid/missing */
+async function resolveUserId(authToken?: string): Promise<string | null> {
+  if (!authToken || !process.env.CLERK_SECRET_KEY) return null;
+  try {
+    const payload = await verifyToken(authToken, {
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
 function send(ws: WebSocket, msg: object): void {
   if (ws.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify(msg));
@@ -302,16 +315,22 @@ wss.on('connection', (ws: WebSocket) => {
     switch (msg.type) {
       case 'create': {
         const code = generateRoomCode();
-        Room.create(code, msg.difficulty).then(room => {
+        const mode = msg.mode || 'casual';
+        resolveUserId(msg.authToken).then(async userId => {
+          if (mode === 'ranked' && !userId) {
+            send(ws, { type: 'error', message: 'Sign in required for ranked play' });
+            return;
+          }
+          const room = await Room.create(code, msg.difficulty, mode);
           rooms.set(code, room);
 
-          if (!room.addPlayer(ws, msg.playerName)) {
+          if (!room.addPlayer(ws, msg.playerName, userId)) {
             send(ws, { type: 'error', message: 'Failed to create room' });
             return;
           }
 
           playerRooms.set(ws, code);
-          send(ws, { type: 'room-created', roomCode: code, passage: room.passage });
+          send(ws, { type: 'room-created', roomCode: code, passage: room.passage, mode: room.mode });
           room.broadcast({ type: 'player-joined', players: room.getPlayerInfoList() });
         }).catch(() => {
           send(ws, { type: 'error', message: 'Failed to create room' });
@@ -326,14 +345,23 @@ wss.on('connection', (ws: WebSocket) => {
           return;
         }
 
-        if (!room.addPlayer(ws, msg.playerName)) {
-          send(ws, { type: 'error', message: 'Room is full or race already started' });
-          return;
-        }
+        resolveUserId(msg.authToken).then(userId => {
+          if (room.mode === 'ranked' && !userId) {
+            send(ws, { type: 'error', message: 'Sign in required to join ranked rooms' });
+            return;
+          }
 
-        playerRooms.set(ws, room.code);
-        room.broadcast({ type: 'player-joined', players: room.getPlayerInfoList() });
-        send(ws, { type: 'room-created', roomCode: room.code, passage: room.passage });
+          if (!room.addPlayer(ws, msg.playerName, userId)) {
+            send(ws, { type: 'error', message: 'Room is full or race already started' });
+            return;
+          }
+
+          playerRooms.set(ws, room.code);
+          room.broadcast({ type: 'player-joined', players: room.getPlayerInfoList() });
+          send(ws, { type: 'room-created', roomCode: room.code, passage: room.passage, mode: room.mode });
+        }).catch(() => {
+          send(ws, { type: 'error', message: 'Failed to join room' });
+        });
         break;
       }
 
