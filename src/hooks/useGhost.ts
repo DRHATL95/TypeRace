@@ -25,6 +25,14 @@ export function useGhost({ passageId, passageLength, enabled, isStarted, startTi
     recordedTimestamps.current = [];
   }, [passageId, enabled]);
 
+  // Clear recorded timestamps whenever the race resets, even if passageId
+  // hasn't changed (e.g. "New Text" returns the same passage).
+  useEffect(() => {
+    if (!isStarted) {
+      recordedTimestamps.current = [];
+    }
+  }, [isStarted]);
+
   useEffect(() => {
     if (!isStarted || !ghostData.current || !enabled || startTime === 0) {
       return;
