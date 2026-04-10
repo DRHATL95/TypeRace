@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "A desktop TypeRacer game built with Electron and React",
     "main": "dist/main.js",
-    "homepage": "./",
+    "homepage": "/",
     "scripts": {
         "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:3000 && npm run dev:electron\"",
         "dev:renderer": "react-scripts start",
