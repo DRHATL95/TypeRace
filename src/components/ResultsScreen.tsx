@@ -1,7 +1,7 @@
-import React from 'react';
-import { RaceResult, PassageCategory } from '../types/GameTypes';
+import React, { useState } from 'react';
+import { RaceResult, PassageCategory, Difficulty } from '../types/GameTypes';
 import { getPerformanceMessage, formatTime } from '../utils/typingUtils';
-import { getHistory } from '../utils/storage';
+import { getHistory, getPlayerName } from '../utils/storage';
 import Sparkline from './Sparkline';
 import './ResultsScreen.css';
 
@@ -24,6 +24,7 @@ interface ResultsScreenProps {
     rematchSecondsLeft?: number | null;
     category?: PassageCategory;
     onCategoryChange?: (c: PassageCategory) => void;
+    difficulty?: Difficulty;
 }
 
 const getRank = (wpm: number, accuracy: number) => {
@@ -47,12 +48,52 @@ const CATEGORIES: { value: PassageCategory; label: string }[] = [
     { value: 'random-words', label: 'RANDOM WORDS' },
 ];
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange }) => {
+const API_BASE = process.env.NODE_ENV === 'production' ? '' : `http://${window.location.hostname}:3001`;
+
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
+    const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
     const rank = getRank(result.wpm, result.accuracy);
     const history = getHistory();
     const recentWPMs = history.slice(-10).map(h => h.wpm);
     const fireTierLabel = getFireTierLabel(fireStreak);
+
+    const handleShare = async () => {
+        setShareState('sharing');
+        try {
+            const res = await fetch(`${API_BASE}/api/share`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    wpm: result.wpm,
+                    accuracy: result.accuracy,
+                    fireStreak,
+                    difficulty: difficulty || 'medium',
+                    category: category || 'sentences',
+                    rankLabel: rank.label,
+                    playerName: getPlayerName(),
+                }),
+            });
+            const data = await res.json();
+            const shareUrl = `${window.location.origin}/share/${data.id}`;
+
+            if (navigator.share) {
+                await navigator.share({
+                    title: `I scored ${result.wpm} WPM on TypeRace!`,
+                    text: `${result.wpm} WPM | ${result.accuracy}% accuracy | Rank ${rank.label}`,
+                    url: shareUrl,
+                });
+                setShareState('copied');
+            } else {
+                await navigator.clipboard.writeText(shareUrl);
+                setShareState('copied');
+            }
+            setTimeout(() => setShareState('idle'), 3000);
+        } catch {
+            setShareState('error');
+            setTimeout(() => setShareState('idle'), 2000);
+        }
+    };
 
     return (
         <div className="results-screen">
@@ -183,6 +224,9 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
                 <div className="results-actions">
                     <button onClick={onRestart} className="action-btn action-primary">
                         RACE AGAIN
+                    </button>
+                    <button onClick={handleShare} className="action-btn action-share" disabled={shareState === 'sharing'}>
+                        {shareState === 'copied' ? 'LINK COPIED!' : shareState === 'sharing' ? 'SHARING...' : shareState === 'error' ? 'FAILED' : 'SHARE'}
                     </button>
                     <button onClick={onLeaveRoom || onNewRace} className="action-btn action-ghost">
                         {onLeaveRoom ? 'LEAVE ROOM' : 'NEW TEXT'}

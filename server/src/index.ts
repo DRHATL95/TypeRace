@@ -6,7 +6,8 @@ import { clerkMiddleware, getAuth } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
-import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard } from './db';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, insertPassage, getPassageCount, insertRaceResult, getTodayLeaderboard, createShare, getShare } from './db';
+import { nanoid } from 'nanoid';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 const ROOM_TTL_MS = 10 * 60 * 1000;
@@ -127,13 +128,134 @@ app.get('/leaderboard/today', async (_req, res) => {
   }
 });
 
+// Create a share link
+app.post('/api/share', async (req, res) => {
+  const { wpm, accuracy, fireStreak, difficulty, category, rankLabel, playerName } = req.body;
+  if (wpm == null || accuracy == null || !difficulty || !category) {
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  let userId: string | null = null;
+  try {
+    const auth = getAuth(req);
+    userId = auth.userId;
+  } catch {}
+  try {
+    const id = nanoid(10);
+    await createShare({
+      id,
+      user_id: userId,
+      wpm,
+      accuracy,
+      fire_streak: fireStreak || 0,
+      difficulty,
+      category,
+      rank_label: rankLabel || '',
+      player_name: playerName || null,
+    });
+    res.status(201).json({ id, url: `/share/${id}` });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create share' });
+  }
+});
+
+// Get share data (JSON)
+app.get('/api/share/:id', async (req, res) => {
+  try {
+    const share = await getShare(req.params.id);
+    if (!share) {
+      res.status(404).json({ error: 'Share not found' });
+      return;
+    }
+    res.json(share);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch share' });
+  }
+});
+
+// Server-rendered OG page for rich embeds (Discord, iMessage, etc.)
+app.get('/share/:id', async (req, res) => {
+  try {
+    const share = await getShare(req.params.id);
+    if (!share) {
+      res.status(404).send('Share not found');
+      return;
+    }
+    const title = `${share.player_name || 'A racer'} scored ${share.wpm} WPM on TypeRace`;
+    const description = `${share.accuracy}% accuracy | ${share.difficulty.toUpperCase()} | Rank ${share.rank_label || '?'}${share.fire_streak > 0 ? ` | ${share.fire_streak} streak` : ''}`;
+    const siteUrl = process.env.PUBLIC_URL || `https://${req.get('host')}`;
+    const ogImage = `${siteUrl}/api/share/${share.id}/og.svg`;
+
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>${title}</title>
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:image" content="${ogImage}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${siteUrl}/share/${share.id}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
+  <meta name="twitter:image" content="${ogImage}">
+  <meta name="theme-color" content="#00f0ff">
+  <meta http-equiv="refresh" content="0;url=${siteUrl}">
+</head>
+<body style="background:#060a14;color:#e0e6f0;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0">
+  <div style="text-align:center">
+    <h1 style="color:#00f0ff;font-size:3rem;margin:0">${share.wpm} WPM</h1>
+    <p style="color:#a0a8b8;font-size:1.2rem">${share.accuracy}% accuracy</p>
+    <p style="color:#a0a8b8">Redirecting to TypeRace...</p>
+  </div>
+</body>
+</html>`);
+  } catch {
+    res.status(500).send('Server error');
+  }
+});
+
+// Dynamic OG image (SVG)
+app.get('/api/share/:id/og.svg', async (req, res) => {
+  try {
+    const share = await getShare(req.params.id);
+    if (!share) {
+      res.status(404).send('Not found');
+      return;
+    }
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#060a14"/>
+  <rect x="40" y="40" width="1120" height="550" rx="16" fill="#0d1321" stroke="#00f0ff" stroke-opacity="0.15" stroke-width="2"/>
+  <text x="600" y="120" text-anchor="middle" fill="#00f0ff" font-family="monospace" font-size="24" letter-spacing="8" opacity="0.6">TYPERACE</text>
+  <text x="600" y="260" text-anchor="middle" fill="#e0e6f0" font-family="sans-serif" font-weight="bold" font-size="120">${share.wpm}</text>
+  <text x="600" y="310" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="28">WORDS PER MINUTE</text>
+  <text x="380" y="420" text-anchor="middle" fill="#00ff88" font-family="monospace" font-size="36">${share.accuracy}%</text>
+  <text x="380" y="460" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="18">ACCURACY</text>
+  <text x="600" y="420" text-anchor="middle" fill="#ffaa00" font-family="sans-serif" font-weight="bold" font-size="48">${share.rank_label || '?'}</text>
+  <text x="600" y="460" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="18">RANK</text>
+  <text x="820" y="420" text-anchor="middle" fill="#ff0080" font-family="monospace" font-size="36">${share.fire_streak}</text>
+  <text x="820" y="460" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="18">STREAK</text>
+  ${share.player_name ? `<text x="600" y="550" text-anchor="middle" fill="#a0a8b8" font-family="monospace" font-size="22">${share.player_name} | ${share.difficulty.toUpperCase()}</text>` : ''}
+</svg>`;
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(svg);
+  } catch {
+    res.status(500).send('Server error');
+  }
+});
+
 // ── Serve React client in production ──────────────────────
 const clientDir = path.join(__dirname, '..', '..', 'client');
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(clientDir));
   // SPA fallback — serve index.html for all non-API routes
   app.get('*', (_req, res, next) => {
-    if (_req.path.startsWith('/passages') || _req.path.startsWith('/health') || _req.path.startsWith('/results') || _req.path.startsWith('/leaderboard')) {
+    const p = _req.path;
+    if (p.startsWith('/passages') || p.startsWith('/health') || p.startsWith('/results') || p.startsWith('/leaderboard') || p.startsWith('/api/') || p.startsWith('/share/')) {
       return next();
     }
     res.sendFile(path.join(clientDir, 'index.html'));
@@ -141,10 +263,24 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 function generateRoomCode(): string {
-  const words = ['NEON', 'VOLT', 'RUSH', 'FLUX', 'BYTE', 'GLOW', 'TURBO', 'BLAZE'];
-  const word = words[Math.floor(Math.random() * words.length)];
-  const num = Math.random().toString(36).substring(2, 4).toUpperCase();
-  return `${word}-${num}`;
+  const adjectives = [
+    'swift', 'bold', 'keen', 'wild', 'fast', 'cool', 'rad', 'hot',
+    'slick', 'prime', 'epic', 'mega', 'ultra', 'hyper', 'turbo', 'neon',
+    'vivid', 'brisk', 'crisp', 'sleek', 'fierce', 'blazing', 'rapid', 'zippy',
+    'sharp', 'witty', 'grand', 'lucky', 'noble', 'brave', 'deft', 'agile',
+    'calm', 'sly', 'chill', 'snappy', 'stellar', 'cosmic', 'golden', 'iron',
+  ];
+  const nouns = [
+    'falcon', 'tiger', 'comet', 'spark', 'blaze', 'storm', 'wolf', 'hawk',
+    'viper', 'raven', 'phoenix', 'cobra', 'lynx', 'panther', 'shark', 'orca',
+    'bolt', 'flame', 'pulse', 'nova', 'orbit', 'prism', 'surge', 'flash',
+    'rider', 'pilot', 'racer', 'knight', 'scout', 'titan', 'forge', 'nexus',
+    'echo', 'cipher', 'pixel', 'matrix', 'byte', 'vapor', 'drift', 'quest',
+  ];
+  const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+  const noun = nouns[Math.floor(Math.random() * nouns.length)];
+  const num = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+  return `${adj}-${noun}-${num}`;
 }
 
 function send(ws: WebSocket, msg: object): void {
@@ -184,7 +320,7 @@ wss.on('connection', (ws: WebSocket) => {
       }
 
       case 'join': {
-        const room = rooms.get(msg.roomCode.toUpperCase());
+        const room = rooms.get(msg.roomCode) || rooms.get(msg.roomCode.toLowerCase()) || rooms.get(msg.roomCode.toUpperCase());
         if (!room) {
           send(ws, { type: 'error', message: 'Room not found' });
           return;
@@ -195,7 +331,7 @@ wss.on('connection', (ws: WebSocket) => {
           return;
         }
 
-        playerRooms.set(ws, msg.roomCode.toUpperCase());
+        playerRooms.set(ws, room.code);
         room.broadcast({ type: 'player-joined', players: room.getPlayerInfoList() });
         send(ws, { type: 'room-created', roomCode: room.code, passage: room.passage });
         break;

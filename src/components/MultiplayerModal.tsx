@@ -8,6 +8,7 @@ interface MultiplayerModalProps {
   onClose: () => void;
   onCreateRoom: (playerName: string, difficulty: Difficulty) => void;
   onJoinRoom: (playerName: string, roomCode: string) => void;
+  initialRoomCode?: string;
 }
 
 const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
@@ -15,10 +16,11 @@ const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
   onClose,
   onCreateRoom,
   onJoinRoom,
+  initialRoomCode,
 }) => {
   const [name, setName] = useState(getPlayerName() || '');
-  const [roomCode, setRoomCode] = useState('');
-  const [mode, setMode] = useState<'choose' | 'join'>('choose');
+  const [roomCode, setRoomCode] = useState(initialRoomCode || '');
+  const [mode, setMode] = useState<'choose' | 'join'>(initialRoomCode ? 'join' : 'choose');
 
   const handleCreate = () => {
     if (!name.trim()) return;
@@ -70,9 +72,9 @@ const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
               <input
                 className="mp-input mp-input-code"
                 value={roomCode}
-                onChange={e => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="e.g. NEON-4X"
-                maxLength={10}
+                onChange={e => setRoomCode(e.target.value.toLowerCase())}
+                placeholder="e.g. swift-falcon-42"
+                maxLength={30}
               />
             </div>
             <div className="mp-actions">

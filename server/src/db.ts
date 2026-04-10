@@ -101,6 +101,46 @@ export async function getTodayLeaderboard(): Promise<{ topWpm: LeaderboardEntry[
   return { topWpm: wpmResult.rows, topStreak: streakResult.rows };
 }
 
+// ── Shares ───────────────────────────────────────────────
+
+export interface ShareData {
+  id: string;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+  difficulty: string;
+  category: string;
+  rank_label: string | null;
+  player_name: string | null;
+  created_at: string;
+}
+
+export async function createShare(share: {
+  id: string;
+  user_id?: string | null;
+  wpm: number;
+  accuracy: number;
+  fire_streak: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+  rank_label: string;
+  player_name?: string | null;
+}): Promise<void> {
+  await pool.query(
+    `INSERT INTO shares (id, user_id, wpm, accuracy, fire_streak, difficulty, category, rank_label, player_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+    [share.id, share.user_id || null, share.wpm, share.accuracy, share.fire_streak, share.difficulty, share.category, share.rank_label, share.player_name || null]
+  );
+}
+
+export async function getShare(id: string): Promise<ShareData | null> {
+  const { rows } = await pool.query<ShareData>(
+    `SELECT id, wpm, accuracy, fire_streak, difficulty, category, rank_label, player_name, created_at FROM shares WHERE id = $1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
 // ── Seed ──────────────────────────────────────────────────
 
 const SEED_PASSAGES: TextPassage[] = [

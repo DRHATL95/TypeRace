@@ -44,8 +44,20 @@ function App() {
     const [dailyStreak, setDailyStreak] = useState(getDailyStreak());
     const [totalRaces, setTotalRaces] = useState(getHistory().length);
     const [showMPModal, setShowMPModal] = useState(false);
+    const [joinCode, setJoinCode] = useState<string | null>(null);
     const [todaysBest, setTodaysBest] = useState(getTodaysBest());
     const [leaderboard, setLeaderboard] = useState<TodayLeaderboard | null>(null);
+
+    // Detect /join/:code URL on mount
+    useEffect(() => {
+        const match = window.location.pathname.match(/^\/join\/(.+)$/);
+        if (match) {
+            setJoinCode(match[1]);
+            setShowMPModal(true);
+            // Clean URL without reload
+            window.history.replaceState(null, '', '/');
+        }
+    }, []);
 
     const mp = useMultiplayer();
     const getAuthToken = useAuthToken();
@@ -295,6 +307,7 @@ function App() {
                     onLeaveRoom={mp.state === 'finished' ? () => { mp.leave(); returnToWelcome(); } : undefined}
                     rematchVoters={mp.state === 'finished' ? mp.rematchVoters : undefined}
                     rematchSecondsLeft={mp.state === 'finished' ? mp.rematchSecondsLeft : undefined}
+                    difficulty={difficulty}
                     category={mp.state === 'disconnected' ? category : undefined}
                     onCategoryChange={mp.state === 'disconnected' ? handleCategoryChange : undefined}
                 />
@@ -303,9 +316,10 @@ function App() {
             {showMPModal && (
                 <MultiplayerModal
                     difficulty={difficulty}
-                    onClose={() => setShowMPModal(false)}
+                    onClose={() => { setShowMPModal(false); setJoinCode(null); }}
                     onCreateRoom={handleCreateRoom}
                     onJoinRoom={handleJoinRoom}
+                    initialRoomCode={joinCode || undefined}
                 />
             )}
         </div>

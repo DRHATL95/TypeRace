@@ -38,6 +38,25 @@
     margin-bottom: 2rem;
 }
 
+.lobby-copy-link {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    padding: 0.4rem 1rem;
+    background: transparent;
+    border: 1px solid var(--cyan);
+    border-radius: 2px;
+    color: var(--cyan);
+    cursor: pointer;
+    letter-spacing: 0.12em;
+    transition: all 0.2s ease;
+    margin-bottom: 2rem;
+}
+
+.lobby-copy-link:hover {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: 0 0 12px rgba(0, 240, 255, 0.15);
+}
+
 .lobby-players {
     margin-bottom: 2rem;
 }

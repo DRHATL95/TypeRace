@@ -268,6 +268,23 @@
     transform: translateY(-2px);
 }
 
+.action-share {
+    background: transparent;
+    color: var(--green);
+    border: 1px solid var(--green);
+}
+
+.action-share:hover:not(:disabled) {
+    background: rgba(0, 255, 136, 0.1);
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.15);
+    transform: translateY(-2px);
+}
+
+.action-share:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
 .action-ghost {
     background: transparent;
     color: var(--text-ghost);

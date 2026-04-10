@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './Lobby.css';
 
 interface PlayerInfo {
@@ -17,6 +17,16 @@ interface LobbyProps {
 }
 
 const Lobby: React.FC<LobbyProps> = ({ roomCode, players, isCreator, onStart, onLeave, countdownSeconds }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/join/${roomCode}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   return (
     <div className="lobby-screen">
       {countdownSeconds != null && countdownSeconds > 0 && (
@@ -29,7 +39,9 @@ const Lobby: React.FC<LobbyProps> = ({ roomCode, players, isCreator, onStart, on
       <div className="lobby-content">
         <div className="lobby-label">ROOM CODE</div>
         <div className="lobby-code">{roomCode}</div>
-        <div className="lobby-hint">Share this code with friends</div>
+        <button className="lobby-copy-link" onClick={handleCopyLink}>
+          {copied ? 'COPIED!' : 'COPY INVITE LINK'}
+        </button>
 
         <div className="lobby-players">
           <div className="lobby-players-label">PLAYERS ({players.length}/4)</div>
