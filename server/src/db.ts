@@ -77,6 +77,12 @@ export interface LeaderboardEntry {
   wpm: number;
   accuracy: number;
   fire_streak: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+  /** True when this row was submitted by a signed-in Clerk user. Guests and
+   *  legacy anonymous rows get `false`. Derived server-side so the raw
+   *  user_id (a Clerk PII surface) never leaks to the client. */
+  is_authed: boolean;
 }
 
 export async function insertRaceResult(result: {
@@ -87,33 +93,103 @@ export async function insertRaceResult(result: {
   difficulty: Difficulty;
   category: PassageCategory;
   user_id?: string | null;
+  guest_id?: string | null;
 }): Promise<number> {
   const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category, user_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category, result.user_id || null]
+    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category, user_id, guest_id)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category, result.user_id || null, result.guest_id || null]
   );
   return rows[0].id;
 }
 
-export async function getTodayLeaderboard(): Promise<{ topWpm: LeaderboardEntry[]; topStreak: LeaderboardEntry[] }> {
+export async function getTodayLeaderboard(
+  categoryFilter?: PassageCategory,
+): Promise<{ topWpm: LeaderboardEntry[]; topStreak: LeaderboardEntry[] }> {
+  // Both boards are deduped on COALESCE(user_id, guest_id, player_name) so
+  // one fast player can't monopolize all 5 slots. `DISTINCT ON` picks the
+  // first row per identity key based on the ORDER BY, so we sort by the
+  // dedup key first, then by the metric we care about (wpm DESC / streak DESC).
+  // Postgres returns one row per identity with its best result of the day,
+  // and we re-sort in JS and slice the top 5. LIMIT can't go in the SQL
+  // because it would truncate before dedup.
+  //
+  // categoryFilter is optional — omitting it returns an "ALL" board across
+  // every category. Passing it adds a WHERE clause so the dedup is scoped
+  // to a single category, which meaningfully changes the winners because
+  // random-words runs are much faster than sentences runs.
+  const catClause = categoryFilter ? 'AND category = $1' : '';
+  const catParams = categoryFilter ? [categoryFilter] : [];
   const [wpmResult, streakResult] = await Promise.all([
     pool.query<LeaderboardEntry>(
-      `SELECT player_name, wpm, accuracy, fire_streak
+      `SELECT DISTINCT ON (COALESCE(user_id, guest_id, player_name))
+         player_name, wpm, accuracy, fire_streak, difficulty, category,
+         (user_id IS NOT NULL) AS is_authed
        FROM race_results
-       WHERE created_at::date = CURRENT_DATE
-       ORDER BY wpm DESC
-       LIMIT 5`
+       WHERE created_at::date = CURRENT_DATE ${catClause}
+       ORDER BY COALESCE(user_id, guest_id, player_name), wpm DESC`,
+      catParams,
     ),
     pool.query<LeaderboardEntry>(
-      `SELECT player_name, wpm, accuracy, fire_streak
+      `SELECT DISTINCT ON (COALESCE(user_id, guest_id, player_name))
+         player_name, wpm, accuracy, fire_streak, difficulty, category,
+         (user_id IS NOT NULL) AS is_authed
        FROM race_results
-       WHERE created_at::date = CURRENT_DATE
-       ORDER BY fire_streak DESC
-       LIMIT 5`
+       WHERE created_at::date = CURRENT_DATE ${catClause}
+       ORDER BY COALESCE(user_id, guest_id, player_name), fire_streak DESC`,
+      catParams,
     ),
   ]);
-  return { topWpm: wpmResult.rows, topStreak: streakResult.rows };
+  const topWpm = [...wpmResult.rows].sort((a, b) => b.wpm - a.wpm).slice(0, 5);
+  const topStreak = [...streakResult.rows].sort((a, b) => b.fire_streak - a.fire_streak).slice(0, 5);
+  return { topWpm, topStreak };
+}
+
+// Look up a single identity's rank on today's WPM leaderboard. Returns
+// null if the identity hasn't raced today at all (under the given category
+// filter, if any). The rank returned here matches what getTodayLeaderboard
+// would show because both queries use the same DISTINCT ON dedup key and
+// the same ORDER BY tie-break — otherwise we'd get the embarrassing case
+// where the callout says "#3" but the user's name is nowhere on the board.
+//
+// `identityKey` must be the same value COALESCE(user_id, guest_id,
+// player_name) would produce server-side: the caller passes the user_id
+// for signed-in users, the guest_id for anonymous users with a slug, or
+// the raw player_name as a last resort.
+export async function getTodayRank(
+  identityKey: string,
+  categoryFilter?: PassageCategory,
+): Promise<{ rank: number; wpm: number; total: number } | null> {
+  const catClause = categoryFilter ? 'AND category = $1' : '';
+  const params: (string | PassageCategory)[] = categoryFilter
+    ? [categoryFilter, identityKey]
+    : [identityKey];
+  const identityParam = categoryFilter ? '$2' : '$1';
+  const { rows } = await pool.query<{ rank: string; wpm: number; total: string }>(
+    `WITH best AS (
+       SELECT DISTINCT ON (COALESCE(user_id, guest_id, player_name))
+         COALESCE(user_id, guest_id, player_name) AS identity_key,
+         wpm
+       FROM race_results
+       WHERE created_at::date = CURRENT_DATE ${catClause}
+       ORDER BY COALESCE(user_id, guest_id, player_name), wpm DESC
+     ),
+     ranked AS (
+       SELECT identity_key, wpm,
+              RANK() OVER (ORDER BY wpm DESC) AS rank,
+              COUNT(*) OVER () AS total
+       FROM best
+     )
+     SELECT rank, wpm, total FROM ranked WHERE identity_key = ${identityParam}`,
+    params,
+  );
+  if (rows.length === 0) return null;
+  // pg returns bigint/rank as strings — coerce to number for a clean JSON shape.
+  return {
+    rank: Number(rows[0].rank),
+    wpm: rows[0].wpm,
+    total: Number(rows[0].total),
+  };
 }
 
 // ── Shares ───────────────────────────────────────────────
@@ -133,6 +209,7 @@ export interface ShareData {
 export async function createShare(share: {
   id: string;
   user_id?: string | null;
+  guest_id?: string | null;
   wpm: number;
   accuracy: number;
   fire_streak: number;
@@ -142,9 +219,9 @@ export async function createShare(share: {
   player_name?: string | null;
 }): Promise<void> {
   await pool.query(
-    `INSERT INTO shares (id, user_id, wpm, accuracy, fire_streak, difficulty, category, rank_label, player_name)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-    [share.id, share.user_id || null, share.wpm, share.accuracy, share.fire_streak, share.difficulty, share.category, share.rank_label, share.player_name || null]
+    `INSERT INTO shares (id, user_id, guest_id, wpm, accuracy, fire_streak, difficulty, category, rank_label, player_name)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [share.id, share.user_id || null, share.guest_id || null, share.wpm, share.accuracy, share.fire_streak, share.difficulty, share.category, share.rank_label, share.player_name || null]
   );
 }
 
@@ -164,23 +241,43 @@ export interface MonthlyLeaderboardEntry {
   accuracy: number;
   fire_streak: number;
   race_count: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+  is_authed: boolean;
 }
 
-export async function getMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
+export async function getMonthlyLeaderboard(
+  categoryFilter?: PassageCategory,
+): Promise<MonthlyLeaderboardEntry[]> {
+  // Identity priority for deduplication: Clerk user_id > guest_id > player_name.
+  // Authed users get cross-device merge via user_id, guests get per-device merge
+  // via guest_id, and legacy anonymous rows fall back to display name so they
+  // still dedupe reasonably.
+  //
+  // When categoryFilter is set, both the outer SELECT and the inner race_count
+  // subquery must apply the same filter — otherwise "races this month in X
+  // category" would be understated against a total that includes all categories.
+  const catOuter = categoryFilter ? 'AND category = $1' : '';
+  const catInner = categoryFilter ? 'AND r2.category = $1' : '';
+  const params = categoryFilter ? [categoryFilter] : [];
   const { rows } = await pool.query<MonthlyLeaderboardEntry>(`
-    SELECT DISTINCT ON (COALESCE(user_id, player_name))
+    SELECT DISTINCT ON (COALESCE(user_id, guest_id, player_name))
       player_name,
       wpm,
       accuracy,
       fire_streak,
+      difficulty,
+      category,
+      (user_id IS NOT NULL) AS is_authed,
       (SELECT COUNT(*)::int FROM race_results r2
          WHERE r2.created_at >= date_trunc('month', CURRENT_DATE)
-           AND COALESCE(r2.user_id, r2.player_name) = COALESCE(race_results.user_id, race_results.player_name)
+           ${catInner}
+           AND COALESCE(r2.user_id, r2.guest_id, r2.player_name) = COALESCE(race_results.user_id, race_results.guest_id, race_results.player_name)
       ) AS race_count
     FROM race_results
-    WHERE created_at >= date_trunc('month', CURRENT_DATE)
-    ORDER BY COALESCE(user_id, player_name), wpm DESC
-  `);
+    WHERE created_at >= date_trunc('month', CURRENT_DATE) ${catOuter}
+    ORDER BY COALESCE(user_id, guest_id, player_name), wpm DESC
+  `, params);
 
   // Sort by wpm descending and limit to 100
   rows.sort((a, b) => b.wpm - a.wpm);
@@ -194,6 +291,7 @@ export async function insertMultiplayerResult(result: {
   room_code: string;
   mode: RoomMode;
   user_id: string | null;
+  guest_id?: string | null;
   player_name: string;
   wpm: number;
   accuracy: number;
@@ -204,9 +302,9 @@ export async function insertMultiplayerResult(result: {
 }): Promise<number> {
   const { rows } = await pool.query<{ id: number }>(
     `INSERT INTO multiplayer_results
-       (match_id, room_code, mode, user_id, player_name, wpm, accuracy, fire_streak, rank, difficulty, category)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
-    [result.match_id, result.room_code, result.mode, result.user_id, result.player_name,
+       (match_id, room_code, mode, user_id, guest_id, player_name, wpm, accuracy, fire_streak, rank, difficulty, category)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+    [result.match_id, result.room_code, result.mode, result.user_id, result.guest_id || null, result.player_name,
      result.wpm, result.accuracy, result.fire_streak, result.rank, result.difficulty, result.category]
   );
   return rows[0].id;

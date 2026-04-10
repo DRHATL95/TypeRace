@@ -229,3 +229,18 @@
     letter-spacing: 0.3em;
     margin-top: 1rem;
 }
+
+/* ── Responsive ───────────────────────────────────────── */
+@media (max-width: 480px) {
+    .lobby-screen {
+        padding: 1rem 0.75rem;
+    }
+
+    .lobby-code {
+        font-size: 2.5rem;
+    }
+
+    .lobby-player {
+        padding: 0.5rem 0.75rem;
+    }
+}

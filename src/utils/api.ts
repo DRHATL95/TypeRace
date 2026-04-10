@@ -45,6 +45,11 @@ export interface LeaderboardEntry {
   wpm: number;
   accuracy: number;
   fire_streak: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+  /** True when this row was submitted by a signed-in user. Derived server-side
+   *  from `user_id IS NOT NULL` so the raw Clerk ID never leaves the backend. */
+  is_authed: boolean;
 }
 
 export interface TodayLeaderboard {
@@ -59,6 +64,7 @@ export async function submitRaceResult(data: {
   fireStreak: number;
   difficulty: Difficulty;
   category: PassageCategory;
+  guestId?: string;
 }, authToken?: string | null): Promise<void> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -75,9 +81,40 @@ export async function submitRaceResult(data: {
   }
 }
 
-export async function fetchTodayLeaderboard(): Promise<TodayLeaderboard | null> {
+export async function fetchTodayLeaderboard(
+  category?: PassageCategory,
+): Promise<TodayLeaderboard | null> {
   try {
-    const res = await fetch(`${API_BASE}/leaderboard/today`);
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    const res = await fetch(`${API_BASE}/leaderboard/today${qs}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export interface TodayRank {
+  rank: number;
+  wpm: number;
+  total: number;
+}
+
+/** Fetch the calling player's rank on today's WPM leaderboard. Returns null
+ *  when the player hasn't raced today, isn't identified, or the request
+ *  fails — callers treat all three the same way (hide the callout). */
+export async function fetchTodayRank(
+  guestId: string | null,
+  category?: PassageCategory,
+  authToken?: string | null,
+): Promise<TodayRank | null> {
+  try {
+    const params = new URLSearchParams();
+    if (guestId) params.set('guestId', guestId);
+    if (category) params.set('category', category);
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(`${API_BASE}/leaderboard/today/me?${params}`, { headers });
     if (!res.ok) return null;
     return await res.json();
   } catch {
@@ -91,11 +128,17 @@ export interface MonthlyLeaderboardEntry {
   accuracy: number;
   fire_streak: number;
   race_count: number;
+  difficulty: Difficulty;
+  category: PassageCategory;
+  is_authed: boolean;
 }
 
-export async function fetchMonthlyLeaderboard(): Promise<MonthlyLeaderboardEntry[]> {
+export async function fetchMonthlyLeaderboard(
+  category?: PassageCategory,
+): Promise<MonthlyLeaderboardEntry[]> {
   try {
-    const res = await fetch(`${API_BASE}/leaderboard/monthly`);
+    const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+    const res = await fetch(`${API_BASE}/leaderboard/monthly${qs}`);
     if (!res.ok) return [];
     return await res.json();
   } catch {

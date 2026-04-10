@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Difficulty } from '../types/GameTypes';
-import { getPlayerName, setPlayerName } from '../utils/storage';
+import { getPlayerName, setPlayerName, getGuestId } from '../utils/storage';
 import { useAppAuth } from '../hooks/useAuthToken';
 import type { RoomMode } from '../hooks/useMultiplayer';
 import './MultiplayerModal.css';
@@ -21,7 +21,11 @@ const MultiplayerModal: React.FC<MultiplayerModalProps> = ({
   initialRoomCode,
 }) => {
   const { isSignedIn, userName } = useAppAuth();
-  const defaultName = (isSignedIn && userName) ? userName : getPlayerName() || '';
+  // Identity resolution for the multiplayer name field:
+  //   1. Authed Clerk name (they're signing in to be identifiable)
+  //   2. Previously-set custom display name (from welcome screen or prior MP)
+  //   3. Stable guest slug (so guests never face an empty field)
+  const defaultName = (isSignedIn && userName) ? userName : (getPlayerName() || getGuestId());
   const [name, setName] = useState(defaultName);
   const [roomCode, setRoomCode] = useState(initialRoomCode || '');
   const [view, setView] = useState<'choose' | 'join'>(initialRoomCode ? 'join' : 'choose');

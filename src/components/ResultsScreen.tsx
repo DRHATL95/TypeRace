@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { RaceResult, PassageCategory, Difficulty } from '../types/GameTypes';
 import { getPerformanceMessage, formatTime } from '../utils/typingUtils';
-import { getHistory, getPlayerName } from '../utils/storage';
+import { getHistory, getPlayerName, getGuestId } from '../utils/storage';
 import Sparkline from './Sparkline';
 import './ResultsScreen.css';
 
@@ -62,6 +62,7 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
     const handleShare = async () => {
         setShareState('sharing');
         try {
+            const guestId = getGuestId();
             const res = await fetch(`${API_BASE}/api/share`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -72,7 +73,8 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
                     difficulty: difficulty || 'medium',
                     category: category || 'sentences',
                     rankLabel: rank.label,
-                    playerName: getPlayerName(),
+                    playerName: getPlayerName() || guestId,
+                    guestId,
                 }),
             });
             const data = await res.json();

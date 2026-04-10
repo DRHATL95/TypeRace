@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { RaceResult, TextPassage } from '../types/GameTypes';
+import { getGuestId } from '../utils/storage';
 
 export type RoomMode = 'casual' | 'ranked';
 
@@ -126,7 +127,7 @@ export function useMultiplayer() {
       await connect();
       setIsCreator(true);
       setTimeout(() => {
-        const msg: Record<string, unknown> = { type: 'create', playerName, difficulty, mode };
+        const msg: Record<string, unknown> = { type: 'create', playerName, difficulty, mode, guestId: getGuestId() };
         if (authToken) msg.authToken = authToken;
         send(msg);
       }, 100);
@@ -141,7 +142,7 @@ export function useMultiplayer() {
       await connect();
       setIsCreator(false);
       setTimeout(() => {
-        const msg: Record<string, unknown> = { type: 'join', roomCode: code, playerName };
+        const msg: Record<string, unknown> = { type: 'join', roomCode: code, playerName, guestId: getGuestId() };
         if (authToken) msg.authToken = authToken;
         send(msg);
       }, 100);

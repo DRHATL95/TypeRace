@@ -48,8 +48,8 @@ export interface PlayerResult {
 
 // Client → Server
 export type ClientMessage =
-  | { type: 'create'; playerName: string; difficulty: Difficulty; category?: PassageCategory; authToken?: string; mode?: RoomMode }
-  | { type: 'join'; roomCode: string; playerName: string; authToken?: string }
+  | { type: 'create'; playerName: string; difficulty: Difficulty; category?: PassageCategory; authToken?: string; mode?: RoomMode; guestId?: string }
+  | { type: 'join'; roomCode: string; playerName: string; authToken?: string; guestId?: string }
   | { type: 'start' }
   | { type: 'progress'; currentIndex: number; errors: number; wpm: number }
   | { type: 'finished'; result: RaceResult }

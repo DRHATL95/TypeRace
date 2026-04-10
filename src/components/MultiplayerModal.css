@@ -253,3 +253,34 @@
     background: rgba(255, 0, 128, 0.1);
     box-shadow: var(--glow-magenta);
 }
+
+/* ── Responsive ─────────────────────────────────────────
+   These .mp-* classes are also reused by NameEditModal, so this
+   breakpoint intentionally lives in the shared CSS file rather
+   than being duplicated per-modal. Tighten padding and pull the
+   modal snug against the viewport on phones — the 380px max-width
+   is still respected via calc(). */
+@media (max-width: 480px) {
+    .mp-overlay {
+        padding: 0.75rem;
+    }
+
+    .mp-modal {
+        padding: 1.25rem 1rem;
+        max-width: calc(100vw - 1.5rem);
+    }
+
+    .mp-title {
+        font-size: 0.9rem;
+    }
+
+    .mp-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .mp-actions .mp-btn-create,
+    .mp-actions .mp-btn-join {
+        width: 100%;
+    }
+}

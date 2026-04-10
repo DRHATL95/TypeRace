@@ -8,7 +8,7 @@ import { clerkMiddleware, getAuth, verifyToken } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
-import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, createShare, getShare } from './db';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, getTodayRank, createShare, getShare } from './db';
 import { nanoid } from 'nanoid';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -136,11 +136,55 @@ app.get('/passages/random', async (req, res) => {
 // NOTE: POST /passages was removed. Passages are seeded via the startup seed
 // (see server/src/db.ts — seedIfEmpty) and should not be client-mutable.
 
+// Guest IDs are human-readable slugs generated client-side (e.g. "amber-otter-4271").
+// Validate the shape before accepting so the DB column (VARCHAR(64)) can't be abused
+// as an arbitrary-payload sink and so the index stays on a predictable keyspace.
+const GUEST_ID_RE = /^[a-z0-9-]{1,64}$/;
+function sanitizeGuestId(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !GUEST_ID_RE.test(raw)) return null;
+  return raw;
+}
+
+// Strict whitelists for race-submission inputs. These mirror the DB CHECK
+// constraints so invalid values get rejected as a clean 400 at the edge
+// instead of blowing up as a 500 when Postgres rejects the insert. This is
+// a noise reduction (fewer bogus "Failed to save result" log entries) — the
+// DB constraints remain as the authoritative defense in depth.
+const VALID_DIFFICULTIES: readonly Difficulty[] = ['easy', 'medium', 'hard'];
+const VALID_INSERT_CATEGORIES: readonly PassageCategory[] = ['sentences', 'pop-culture', 'random-words'];
+function isValidDifficulty(raw: unknown): raw is Difficulty {
+  return typeof raw === 'string' && (VALID_DIFFICULTIES as readonly string[]).includes(raw);
+}
+function isValidInsertCategory(raw: unknown): raw is PassageCategory {
+  return typeof raw === 'string' && (VALID_INSERT_CATEGORIES as readonly string[]).includes(raw);
+}
+// player_name is VARCHAR(32) in the schema; mirror that cap here so a long
+// name becomes a 400 instead of a Postgres-sourced 500. Empty-string and
+// pure-whitespace names are rejected too — they'd render as blank rows on
+// the leaderboard and are never legitimate.
+function isValidPlayerName(raw: unknown): raw is string {
+  return typeof raw === 'string' && raw.trim().length > 0 && raw.length <= 32;
+}
+
 // Submit a race result
 app.post('/results', writeLimiter, async (req, res) => {
-  const { playerName, wpm, accuracy, fireStreak, difficulty, category } = req.body;
+  const { playerName, wpm, accuracy, fireStreak, difficulty, category, guestId } = req.body;
   if (!playerName || wpm == null || accuracy == null || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  // Shape validation — runs before plausibility so callers get a specific
+  // error back ("Invalid player name" vs a generic implausibility message).
+  if (!isValidPlayerName(playerName)) {
+    res.status(400).json({ error: 'Invalid player name (must be 1-32 characters)' });
+    return;
+  }
+  if (!isValidDifficulty(difficulty)) {
+    res.status(400).json({ error: 'Invalid difficulty' });
+    return;
+  }
+  if (!isValidInsertCategory(category)) {
+    res.status(400).json({ error: 'Invalid category' });
     return;
   }
   // Plausibility guardrails — reject obvious cheats / garbage submissions.
@@ -160,6 +204,9 @@ app.post('/results', writeLimiter, async (req, res) => {
     const auth = getAuth(req);
     userId = auth.userId;
   } catch {}
+  // Guest ID is only used when not authed — authed users already have cross-device
+  // continuity via user_id and shouldn't double-tag rows.
+  const guest_id = userId ? null : sanitizeGuestId(guestId);
   try {
     const id = await insertRaceResult({
       player_name: playerName,
@@ -169,6 +216,7 @@ app.post('/results', writeLimiter, async (req, res) => {
       difficulty,
       category,
       user_id: userId,
+      guest_id,
     });
     res.status(201).json({ id });
   } catch (err) {
@@ -176,20 +224,62 @@ app.post('/results', writeLimiter, async (req, res) => {
   }
 });
 
-// Get today's leaderboard
-app.get('/leaderboard/today', async (_req, res) => {
+// Whitelist of valid category filters for the leaderboard endpoints.
+// Used to gate the raw query-string input before it reaches the SQL layer —
+// parameter binding would make this safe anyway, but validating early gives
+// clients a clear 400 on typos instead of returning an empty board silently.
+const LEADERBOARD_CATEGORIES: readonly PassageCategory[] = ['sentences', 'pop-culture', 'random-words'];
+function parseLeaderboardCategory(raw: unknown): PassageCategory | undefined {
+  if (typeof raw !== 'string' || raw === '' || raw === 'all') return undefined;
+  return (LEADERBOARD_CATEGORIES as readonly string[]).includes(raw) ? (raw as PassageCategory) : undefined;
+}
+
+// Get today's leaderboard (optionally filtered by ?category=)
+app.get('/leaderboard/today', async (req, res) => {
   try {
-    const leaderboard = await getTodayLeaderboard();
+    const category = parseLeaderboardCategory(req.query.category);
+    const leaderboard = await getTodayLeaderboard(category);
     res.json(leaderboard);
   } catch {
     res.status(500).json({ error: 'Failed to fetch leaderboard' });
   }
 });
 
-// Get monthly leaderboard (best WPM per unique player, top 100)
-app.get('/leaderboard/monthly', async (_req, res) => {
+// Get the calling player's rank on today's WPM leaderboard.
+// Identity resolution mirrors POST /results: a valid Clerk JWT wins, else
+// we fall back to ?guestId=. We *don't* accept a raw player_name here —
+// that would let anyone query anyone else's rank by guessing a name.
+app.get('/leaderboard/today/me', async (req, res) => {
   try {
-    const entries = await getMonthlyLeaderboard();
+    let identityKey: string | null = null;
+    try {
+      const auth = getAuth(req);
+      if (auth.userId) identityKey = auth.userId;
+    } catch {}
+    if (!identityKey) {
+      const guestId = sanitizeGuestId(req.query.guestId);
+      if (guestId) identityKey = guestId;
+    }
+    if (!identityKey) {
+      // No identity provided → nothing to rank. 200 + null keeps the client
+      // code simple (one branch: "no rank today") instead of forcing it to
+      // special-case a 4xx for the expected "not signed in, no guest" path.
+      res.json(null);
+      return;
+    }
+    const category = parseLeaderboardCategory(req.query.category);
+    const rank = await getTodayRank(identityKey, category);
+    res.json(rank);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch rank' });
+  }
+});
+
+// Get monthly leaderboard (best WPM per unique player, top 100)
+app.get('/leaderboard/monthly', async (req, res) => {
+  try {
+    const category = parseLeaderboardCategory(req.query.category);
+    const entries = await getMonthlyLeaderboard(category);
     res.json(entries);
   } catch {
     res.status(500).json({ error: 'Failed to fetch monthly leaderboard' });
@@ -198,9 +288,23 @@ app.get('/leaderboard/monthly', async (_req, res) => {
 
 // Create a share link
 app.post('/api/share', writeLimiter, async (req, res) => {
-  const { wpm, accuracy, fireStreak, difficulty, category, rankLabel, playerName } = req.body;
+  const { wpm, accuracy, fireStreak, difficulty, category, rankLabel, playerName, guestId } = req.body;
   if (wpm == null || accuracy == null || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+  // Same shape validation as POST /results, except playerName is optional
+  // here (share cards can be anonymous) so we only validate it when present.
+  if (!isValidDifficulty(difficulty)) {
+    res.status(400).json({ error: 'Invalid difficulty' });
+    return;
+  }
+  if (!isValidInsertCategory(category)) {
+    res.status(400).json({ error: 'Invalid category' });
+    return;
+  }
+  if (playerName != null && !isValidPlayerName(playerName)) {
+    res.status(400).json({ error: 'Invalid player name (must be 1-32 characters)' });
     return;
   }
   let userId: string | null = null;
@@ -208,11 +312,13 @@ app.post('/api/share', writeLimiter, async (req, res) => {
     const auth = getAuth(req);
     userId = auth.userId;
   } catch {}
+  const guest_id = userId ? null : sanitizeGuestId(guestId);
   try {
     const id = nanoid(10);
     await createShare({
       id,
       user_id: userId,
+      guest_id,
       wpm,
       accuracy,
       fire_streak: fireStreak || 0,
@@ -438,7 +544,7 @@ wss.on('connection', (ws: WebSocket, req) => {
           const room = await Room.create(code, msg.difficulty, mode);
           rooms.set(code, room);
 
-          if (!room.addPlayer(ws, msg.playerName, userId)) {
+          if (!room.addPlayer(ws, msg.playerName, userId, msg.guestId || null)) {
             send(ws, { type: 'error', message: 'Failed to create room' });
             return;
           }
@@ -465,7 +571,7 @@ wss.on('connection', (ws: WebSocket, req) => {
             return;
           }
 
-          if (!room.addPlayer(ws, msg.playerName, userId)) {
+          if (!room.addPlayer(ws, msg.playerName, userId, msg.guestId || null)) {
             send(ws, { type: 'error', message: 'Room is full or race already started' });
             return;
           }

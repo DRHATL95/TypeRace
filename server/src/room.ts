@@ -19,11 +19,16 @@ interface Player {
   color: string;
   isCreator: boolean;
   userId: string | null;
+  guestId: string | null;
   isGuest: boolean;
   progress: PlayerProgress;
   result: RaceResult | null;
   wantsRematch: boolean;
 }
+
+// Mirrors server/src/index.ts GUEST_ID_RE. Kept local here so room.ts doesn't
+// need to reach into index.ts for a single regex.
+const GUEST_ID_RE = /^[a-z0-9-]{1,64}$/;
 
 export type RoomState = 'lobby' | 'countdown' | 'racing' | 'finished';
 
@@ -66,7 +71,7 @@ export class Room {
     this.recentPassageIds.push(passage.id);
   }
 
-  addPlayer(ws: WebSocket, name: string, userId: string | null = null): boolean {
+  addPlayer(ws: WebSocket, name: string, userId: string | null = null, guestId: string | null = null): boolean {
     if (this.players.size >= MAX_PLAYERS) return false;
     if (this.state !== 'lobby') return false;
 
@@ -76,12 +81,17 @@ export class Room {
     const isCreator = this.players.size === 0;
     const color = PLAYER_COLORS[this.players.size];
 
+    // Authed users already have cross-device identity via userId — don't
+    // double-tag rows. Validate shape so we don't persist arbitrary junk.
+    const safeGuestId = !userId && guestId && GUEST_ID_RE.test(guestId) ? guestId : null;
+
     this.players.set(ws, {
       ws,
       name,
       color,
       isCreator,
       userId,
+      guestId: safeGuestId,
       isGuest: !userId,
       progress: {
         name,
@@ -202,6 +212,7 @@ export class Room {
         room_code: this.code,
         mode: this.mode,
         user_id: player?.userId || null,
+        guest_id: player?.guestId || null,
         player_name: r.name,
         wpm: r.result.wpm,
         accuracy: r.result.accuracy,

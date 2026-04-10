@@ -1,0 +1,78 @@
+/* ── NameEditModal additions on top of MultiplayerModal.css ──
+   Only the device-sync section styles live here; everything else (overlay,
+   modal card, inputs, buttons) reuses .mp-* classes. */
+
+.sync-divider {
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        transparent,
+        rgba(0, 240, 255, 0.15),
+        transparent
+    );
+    margin: 1.5rem 0 1.25rem;
+}
+
+.sync-id-row {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.sync-id {
+    flex: 1;
+    padding: 0.7rem 0.9rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    background: var(--bg-deep);
+    color: var(--cyan);
+    border: 1px solid var(--text-ghost);
+    border-radius: 2px;
+    user-select: all;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sync-copy-btn {
+    font-family: var(--font-display);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    padding: 0 1rem;
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 5rem;
+}
+
+.sync-copy-btn:hover {
+    background: rgba(0, 240, 255, 0.1);
+    box-shadow: var(--glow-cyan);
+}
+
+.sync-toast {
+    margin-top: 0.9rem;
+    padding: 0.55rem 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    border-radius: 2px;
+    animation: fadeUp 0.3s ease-out;
+}
+
+.sync-toast-ok {
+    color: var(--green, #00ff88);
+    border: 1px solid rgba(0, 255, 136, 0.35);
+    background: rgba(0, 255, 136, 0.06);
+}
+
+.sync-toast-err {
+    color: var(--magenta);
+    border: 1px solid rgba(255, 0, 128, 0.35);
+    background: rgba(255, 0, 128, 0.06);
+}

@@ -7,7 +7,7 @@ import Lobby from './components/Lobby';
 import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
-import { fetchRandomPassage, submitRaceResult, fetchTodayLeaderboard, TodayLeaderboard, fetchMonthlyLeaderboard, MonthlyLeaderboardEntry } from './utils/api';
+import { fetchRandomPassage, submitRaceResult } from './utils/api';
 import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
 import { useAuthToken } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
@@ -18,7 +18,14 @@ import {
     getCategory, setCategory,
     isGhostEnabled, setGhostEnabled,
     getPlayerName, getTodaysBest,
+    pruneImplausibleBests, getGuestId,
 } from './utils/storage';
+
+// One-shot cleanup on app load: drop any locally-cached PB that fails the
+// modern plausibility floor (e.g. legacy cheat-test rows like 427 WPM @ 6%).
+// Runs at module-import time so the first getBests() call below already sees
+// the cleaned value — no extra render, no flicker.
+pruneImplausibleBests();
 
 declare global {
     interface Window {
@@ -46,8 +53,6 @@ function App() {
     const [showMPModal, setShowMPModal] = useState(false);
     const [joinCode, setJoinCode] = useState<string | null>(null);
     const [todaysBest, setTodaysBest] = useState(getTodaysBest());
-    const [leaderboard, setLeaderboard] = useState<TodayLeaderboard | null>(null);
-    const [monthlyLeaderboard, setMonthlyLeaderboard] = useState<MonthlyLeaderboardEntry[]>([]);
 
     // Detect /join/:code URL on mount
     useEffect(() => {
@@ -113,12 +118,12 @@ function App() {
         }
     }, [mp.state, raceResult]);
 
-    // Refresh today's best and leaderboard when returning to welcome screen
+    // Refresh today's best when returning to welcome screen. Leaderboard
+    // state now lives inside WelcomeScreen itself (it owns the category tab
+    // that drives the fetches), so we only need to refresh local stats here.
     useEffect(() => {
         if (gameState === 'welcome') {
             setTodaysBest(getTodaysBest());
-            fetchTodayLeaderboard().then(lb => setLeaderboard(lb));
-            fetchMonthlyLeaderboard().then(ml => setMonthlyLeaderboard(ml));
         }
     }, [gameState]);
 
@@ -177,20 +182,23 @@ function App() {
         });
         setTotalRaces(prev => prev + 1);
 
-        // Submit to server leaderboard (fire-and-forget)
-        const playerName = getPlayerName();
-        if (playerName) {
-            getAuthToken().then(token => {
-                submitRaceResult({
-                    playerName,
-                    wpm: result.wpm,
-                    accuracy: result.accuracy,
-                    fireStreak: fireStreak,
-                    difficulty,
-                    category,
-                }, token);
-            });
-        }
+        // Submit to server leaderboard (fire-and-forget). Every race now gets
+        // submitted — pure guests without a chosen display name fall back to
+        // their stable guest-ID slug (e.g. "amber-otter-4271"), so anonymous
+        // results still appear on leaderboards and can be deduped by guest_id.
+        const guestId = getGuestId();
+        const playerName = getPlayerName() || guestId;
+        getAuthToken().then(token => {
+            submitRaceResult({
+                playerName,
+                wpm: result.wpm,
+                accuracy: result.accuracy,
+                fireStreak: fireStreak,
+                difficulty,
+                category,
+                guestId,
+            }, token);
+        });
 
         setSessionStreak(prev => prev + 1);
         const updatedStreak = incrementDailyStreak();
@@ -279,8 +287,6 @@ function App() {
                     category={category}
                     onCategoryChange={handleCategoryChange}
                     todaysBest={todaysBest ? { wpm: todaysBest.wpm, accuracy: todaysBest.accuracy, fireStreak: todaysBest.fireStreak } : null}
-                    leaderboard={leaderboard}
-                    monthlyLeaderboard={monthlyLeaderboard}
                 />
             )}
 
