@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { RaceResult, PassageCategory, Difficulty } from '../types/GameTypes';
 import { getPerformanceMessage, formatTime } from '../utils/typingUtils';
 import { getHistory, getPlayerName, getGuestId } from '../utils/storage';
+import { useAppAuth } from '../hooks/useAuthToken';
 import Sparkline from './Sparkline';
 import './ResultsScreen.css';
 
@@ -53,6 +54,7 @@ const API_BASE = process.env.NODE_ENV === 'production' ? '' : `http://${window.l
 
 const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
     const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
+    const { isSignedIn, userName } = useAppAuth();
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
     const rank = getRank(result.wpm, result.accuracy);
     const history = getHistory();
@@ -73,7 +75,7 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireSt
                     difficulty: difficulty || 'medium',
                     category: category || 'sentences',
                     rankLabel: rank.label,
-                    playerName: getPlayerName() || guestId,
+                    playerName: (isSignedIn && userName) ? userName : (getPlayerName() || guestId),
                     guestId,
                 }),
             });

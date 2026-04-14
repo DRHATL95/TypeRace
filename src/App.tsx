@@ -9,7 +9,7 @@ import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from 
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult } from './utils/api';
 import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
-import { useAuthToken } from './hooks/useAuthToken';
+import { useAppAuth } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
 import {
     getBests, updateBest, getHistory, addHistoryEntry,
@@ -66,7 +66,7 @@ function App() {
     }, []);
 
     const mp = useMultiplayer();
-    const getAuthToken = useAuthToken();
+    const { getToken: getAuthToken, userName, isSignedIn } = useAppAuth();
 
     useEffect(() => {
         if (window.electronAPI) {
@@ -182,12 +182,12 @@ function App() {
         });
         setTotalRaces(prev => prev + 1);
 
-        // Submit to server leaderboard (fire-and-forget). Every race now gets
-        // submitted — pure guests without a chosen display name fall back to
-        // their stable guest-ID slug (e.g. "amber-otter-4271"), so anonymous
-        // results still appear on leaderboards and can be deduped by guest_id.
+        // Submit to server leaderboard (fire-and-forget). Name resolution
+        // priority: Clerk username (when signed in) → stored custom name →
+        // guest-ID slug. This ensures signed-in users show up on leaderboards
+        // as their Clerk identity rather than the anonymous device slug.
         const guestId = getGuestId();
-        const playerName = getPlayerName() || guestId;
+        const playerName = (isSignedIn && userName) ? userName : (getPlayerName() || guestId);
         getAuthToken().then(token => {
             submitRaceResult({
                 playerName,
@@ -207,7 +207,7 @@ function App() {
         if (mp.state !== 'racing') {
             setGameState('results');
         }
-    }, [difficulty, passage, mp]);
+    }, [difficulty, category, passage, mp, getAuthToken, userName, isSignedIn]);
 
     const restartRace = useCallback(async () => {
         if (mp.state !== 'disconnected') {

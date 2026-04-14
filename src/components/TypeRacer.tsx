@@ -115,6 +115,18 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         }
     }, [autoStart, isStarted]);
 
+    // Solo races: auto-focus the input and kick off the countdown as soon as
+    // the passage loads. The user shouldn't need to click the input or press
+    // a throwaway key just to start — landing on this screen is the intent.
+    // Gated on !autoStart so multiplayer (which has its own server-driven
+    // countdown) is unaffected.
+    useEffect(() => {
+        if (autoStart || isStarted || showCountdown) return;
+        inputRef.current?.focus();
+        setShowCountdown(true);
+        setCountdown(3);
+    }, [passage, autoStart, isStarted, showCountdown]);
+
     useEffect(() => {
         if (showCountdown && countdown > 0) {
             countdownIntervalRef.current = setTimeout(() => {
@@ -155,7 +167,10 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (!isStarted) {
-            startCountdown();
+            // Swallow keystrokes while waiting for the countdown. Only kick
+            // off a new countdown if one isn't already running — otherwise
+            // typing mid-countdown would reset it back to 3.
+            if (!showCountdown) startCountdown();
             return;
         }
 
