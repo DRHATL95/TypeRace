@@ -31,7 +31,7 @@ export interface PlayerResult {
 export type MultiplayerState = 'disconnected' | 'lobby' | 'countdown' | 'racing' | 'finished';
 
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const WS_URL = process.env.NODE_ENV === 'production'
+const WS_URL = import.meta.env.PROD
   ? `${wsProtocol}//${window.location.host}`
   : `ws://${window.location.hostname}:3001`;
 

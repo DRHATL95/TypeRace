@@ -5,9 +5,10 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY public/ public/
 COPY src/ src/
-COPY tsconfig.json ./
-ARG REACT_APP_CLERK_PUBLISHABLE_KEY
-ENV REACT_APP_CLERK_PUBLISHABLE_KEY=$REACT_APP_CLERK_PUBLISHABLE_KEY
+COPY tsconfig.json vite.config.ts index.html ./
+# Vite only exposes build-time vars prefixed VITE_ (was REACT_APP_ under CRA).
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 RUN npm run build:web
 
 # ── Stage 2: Build server ─────────────────────────────────

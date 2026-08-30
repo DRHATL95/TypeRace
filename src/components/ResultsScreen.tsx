@@ -50,7 +50,7 @@ const CATEGORIES: { value: PassageCategory; label: string }[] = [
     { value: 'random-words', label: 'RANDOM WORDS' },
 ];
 
-const API_BASE = process.env.NODE_ENV === 'production' ? '' : `http://${window.location.hostname}:3001`;
+const API_BASE = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
 
 const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
     const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
