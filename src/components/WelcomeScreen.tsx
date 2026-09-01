@@ -46,7 +46,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     todaysBest,
 }) => {
     const { isSignedIn, userName, getToken } = useAppAuth();
-    const clerkAvailable = !!process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
+    const clerkAvailable = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
     const [muted, setMutedState] = useState(getMuted());
     const [volume, setVolumeState] = useState(getVolumeLevel());
     // Identity state. `identityTick` is a render-nudger: NameEditModal writes

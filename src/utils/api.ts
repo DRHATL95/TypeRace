@@ -2,7 +2,7 @@ import { TextPassage, Difficulty, PassageCategory } from '../types/GameTypes';
 
 // In production (Docker), client is served from the same origin as the API.
 // In dev, the API is on port 3001.
-const API_BASE = process.env.NODE_ENV === 'production'
+const API_BASE = import.meta.env.PROD
   ? ''
   : `http://${window.location.hostname}:3001`;
 

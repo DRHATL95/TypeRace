@@ -28,7 +28,7 @@ async function loadBuffer(): Promise<AudioBuffer | null> {
   if (loading) return null;
   loading = true;
   try {
-    const url = `${process.env.PUBLIC_URL}/audio/menu-theme.mp3`;
+    const url = `${import.meta.env.BASE_URL}audio/menu-theme.mp3`;
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();
     const ctx = getCtx();

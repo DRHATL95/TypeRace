@@ -5,7 +5,7 @@ import { ClerkAuthProvider } from './hooks/useAuthToken';
 import './index.css';
 import App from './App';
 
-const CLERK_KEY = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY || '';
+const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
 // Cyberpunk theme matching TypeRace's design system (see src/index.css)
 const clerkAppearance = {
