@@ -7,6 +7,11 @@ const isDev = !app.isPackaged;
 // Linux has neither with frame:false, so it keeps the native frame.
 const useNativeFrame = process.platform !== 'win32';
 
+// Nvidia + Wayland: GPU compositing makes the window flicker. Must be set before app is ready.
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('disable-gpu-compositing');
+}
+
 let mainWindow: BrowserWindow;
 
 function createWindow(): void {
