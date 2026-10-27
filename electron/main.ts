@@ -3,6 +3,10 @@ import * as path from 'path';
 
 const isDev = !app.isPackaged;
 
+// Windows draws its own caption buttons via titleBarOverlay; macOS uses traffic lights.
+// Linux has neither with frame:false, so it keeps the native frame.
+const useNativeFrame = process.platform !== 'win32';
+
 let mainWindow: BrowserWindow;
 
 function createWindow(): void {
@@ -17,11 +21,11 @@ function createWindow(): void {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
     },
-    titleBarStyle: 'hiddenInset',
+    titleBarStyle: process.platform === 'linux' ? 'default' : 'hiddenInset',
     trafficLightPosition: { x: 16, y: 16 },
     show: false,
-    frame: process.platform === 'darwin' ? true : false,
-    titleBarOverlay: process.platform !== 'darwin' ? {
+    frame: useNativeFrame,
+    titleBarOverlay: process.platform === 'win32' ? {
       color: '#060a14',
       symbolColor: '#7a8bb5',
       height: 36,
