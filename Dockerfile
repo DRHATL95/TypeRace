@@ -1,5 +1,5 @@
 # ── Stage 1: Build React client ────────────────────────────
-FROM node:20-alpine AS client-build
+FROM node:24-alpine AS client-build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -12,7 +12,7 @@ ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
 RUN npm run build:web
 
 # ── Stage 2: Build server ─────────────────────────────────
-FROM node:20-alpine AS server-build
+FROM node:24-alpine AS server-build
 WORKDIR /app/server
 COPY server/package.json server/package-lock.json* ./
 RUN npm ci
@@ -21,7 +21,7 @@ COPY server/src/ src/
 RUN npm run build
 
 # ── Stage 3: Production image ─────────────────────────────
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 
 # Server dependencies (production only)
