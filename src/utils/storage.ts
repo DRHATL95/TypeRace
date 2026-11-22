@@ -44,6 +44,7 @@ const KEYS = {
   CATEGORY:      'typerace-category',
   VOLUME:        'typerace-volume',
   GUEST_ID:      'typerace-guest-id',
+  XP:            'typerace-xp',
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -219,6 +220,18 @@ export function getCategory(): PassageCategory {
 
 export function setCategory(c: PassageCategory): void {
   write(KEYS.CATEGORY, c);
+}
+
+/** Lifetime XP total (see utils/progression for how it maps to levels). */
+export function getXp(): number {
+  return read<number>(KEYS.XP, 0);
+}
+
+/** Adds XP and returns the new total. */
+export function addXp(amount: number): number {
+  const total = getXp() + Math.max(0, Math.round(amount));
+  write(KEYS.XP, total);
+  return total;
 }
 
 // ---------------------------------------------------------------------------

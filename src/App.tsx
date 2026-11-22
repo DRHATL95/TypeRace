@@ -19,7 +19,9 @@ import {
     isGhostEnabled, setGhostEnabled,
     getPlayerName, getTodaysBest,
     pruneImplausibleBests, getGuestId,
+    getXp, addXp,
 } from './utils/storage';
+import { xpForRace } from './utils/progression';
 
 // One-shot cleanup on app load: drop any locally-cached PB that fails the
 // modern plausibility floor (e.g. legacy cheat-test rows like 427 WPM @ 6%).
@@ -54,6 +56,8 @@ function App() {
     const [showMPModal, setShowMPModal] = useState(false);
     const [joinCode, setJoinCode] = useState<string | null>(null);
     const [todaysBest, setTodaysBest] = useState(getTodaysBest());
+    const [xp, setXp] = useState(getXp());
+    const [xpGained, setXpGained] = useState(0);
 
     // Detect /join/:code URL on mount
     useEffect(() => {
@@ -165,6 +169,10 @@ function App() {
         setRaceResult(result);
         setRaceInsights(insights);
         setLastFireStreak(fireStreak);
+
+        const gained = xpForRace(result.charactersTyped - result.errors, result.accuracy, passage.difficulty);
+        setXp(addXp(gained));
+        setXpGained(gained);
 
         if (mp.state === 'racing') {
             mp.sendFinished(result);
@@ -284,6 +292,7 @@ function App() {
                     bests={bests}
                     dailyStreak={dailyStreak}
                     totalRaces={totalRaces}
+                    xp={xp}
                     ghostEnabled={ghostEnabled}
                     onGhostToggle={handleGhostToggle}
                     category={category}
@@ -322,6 +331,8 @@ function App() {
                 <ResultsScreen
                     result={raceResult}
                     insights={raceInsights}
+                    xp={xp}
+                    xpGained={xpGained}
                     isNewBest={isNewBest}
                     fireStreak={lastFireStreak}
                     onRestart={restartRace}

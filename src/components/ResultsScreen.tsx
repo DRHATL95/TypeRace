@@ -7,6 +7,7 @@ import { RaceInsights } from '../utils/raceInsights';
 import Sparkline from './Sparkline';
 import RaceGraph from './RaceGraph';
 import KeyHeatmap from './KeyHeatmap';
+import LevelProgress from './LevelProgress';
 import './ResultsScreen.css';
 
 interface PlayerResult {
@@ -19,6 +20,8 @@ interface PlayerResult {
 interface ResultsScreenProps {
     result: RaceResult;
     insights?: RaceInsights | null;
+    xp: number;
+    xpGained: number;
     isNewBest: boolean;
     fireStreak: number;
     onRestart: () => void;
@@ -56,7 +59,7 @@ const CATEGORIES: { value: PassageCategory; label: string }[] = [
 
 const API_BASE = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, xp, xpGained, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
     const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
     const { isSignedIn, userName } = useAppAuth();
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
@@ -184,6 +187,8 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, isNewBe
                         </div>
                     </div>
                 </div>
+
+                <LevelProgress xp={xp} gained={xpGained} />
 
                 <div className="results-details">
                     <div className="detail-cell">

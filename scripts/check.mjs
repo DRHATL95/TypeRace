@@ -19,3 +19,16 @@ assert.equal(buildRaceInsights(log, 2.5).timeline.at(-1).t, 2.5);
 assert.deepEqual(buildRaceInsights([], 0), { timeline: [], errorTimes: [], missedKeys: {} });
 
 console.log('raceInsights OK');
+
+// ── progression ──
+const { xpForRace, levelFromXp } = await import('../src/utils/progression.ts');
+assert.equal(xpForRace(160, 100, 'easy'), 160);
+assert.equal(xpForRace(160, 90, 'hard'), 216);            // 160 * 0.9 * 1.5
+assert.equal(xpForRace(0, 100, 'medium'), 0);
+assert.deepEqual(levelFromXp(0),   { level: 1, into: 0,  needed: 100 });
+assert.deepEqual(levelFromXp(99),  { level: 1, into: 99, needed: 100 });
+assert.deepEqual(levelFromXp(100), { level: 2, into: 0,  needed: 150 }); // exact boundary levels up
+assert.deepEqual(levelFromXp(260), { level: 3, into: 10, needed: 200 }); // 100 + 150 + 10
+assert.deepEqual(levelFromXp(-5),  { level: 1, into: 0,  needed: 100 });
+
+console.log('progression OK');
