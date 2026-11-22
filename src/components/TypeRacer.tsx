@@ -217,10 +217,10 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         setFireCount(fireState.consecutiveCorrect);
         setFireActive(fireState.active);
 
-        // Ghost recording
-        if (isCorrect) {
-            recordTimestamp();
-        }
+        // Ghost recording: every scored keystroke (correct or not), so the
+        // ghost replays the cursor itself. Recording only correct ones made a
+        // run with typos lag its real position and stall before the end.
+        recordTimestamp();
 
         // Update character status
         setCharacters(prev => {
