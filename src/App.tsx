@@ -194,10 +194,12 @@ function App() {
             mp.sendFinished(result);
         }
 
-        // The daily passage carries its own difficulty/category, which needn't
-        // match the player's current picker selection.
-        const raceDifficulty = isDaily ? passage.difficulty : difficulty;
-        const raceCategory = isDaily ? passage.category : category;
+        // Use the raced passage's own difficulty/category, not the picker's:
+        // multiplayer rooms pick a random category and the creator's
+        // difficulty, and the daily passage has its own. For solo races the
+        // passage was fetched for the picker values, so nothing changes there.
+        const raceDifficulty = passage.difficulty;
+        const raceCategory = passage.category;
 
         const newBest = updateBest(raceDifficulty, result.wpm, result.accuracy);
         setIsNewBest(newBest);
@@ -244,7 +246,7 @@ function App() {
         if (mp.state !== 'racing') {
             setGameState('results');
         }
-    }, [difficulty, category, passage, isDaily, mp, getAuthToken, userName, isSignedIn]);
+    }, [passage, isDaily, mp, getAuthToken, userName, isSignedIn]);
 
     const restartRace = useCallback(async () => {
         if (mp.state !== 'disconnected') {
