@@ -1,5 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { getGhostData, saveGhostData } from '../utils/storage';
+import { ghostIndexAt, shouldReplaceGhost } from '../utils/ghost';
 
 interface UseGhostOptions {
   passageId: string;
@@ -41,16 +42,7 @@ export function useGhost({ passageId, passageLength, enabled, isStarted, startTi
     const data = ghostData.current;
 
     intervalRef.current = window.setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      let idx = -1;
-      for (let i = 0; i < data.length; i++) {
-        if (data[i] <= elapsed) {
-          idx = i;
-        } else {
-          break;
-        }
-      }
-      setGhostIndex(idx);
+      setGhostIndex(ghostIndexAt(data, Date.now() - startTime));
     }, 50);
 
     return () => {
@@ -65,11 +57,8 @@ export function useGhost({ passageId, passageLength, enabled, isStarted, startTi
   }, [startTime]);
 
   const saveGhost = useCallback(() => {
-    if (recordedTimestamps.current.length > 0) {
-      const existing = getGhostData(passageId);
-      if (!existing || recordedTimestamps.current.length >= existing.length) {
-        saveGhostData(passageId, recordedTimestamps.current);
-      }
+    if (shouldReplaceGhost(recordedTimestamps.current, getGhostData(passageId))) {
+      saveGhostData(passageId, recordedTimestamps.current);
     }
   }, [passageId]);
 
