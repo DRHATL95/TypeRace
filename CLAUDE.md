@@ -49,6 +49,10 @@ Pure CSS, dark neon theme: tokens (`--cyan`, `--magenta`, `--bg-*`, fonts, glows
 
 Server in `server/` (Express + `ws`). Rooms are in memory; passages, race results, shares and leaderboards are in PostgreSQL (`DATABASE_URL`, migrations in `server/src/db/`). Auth is Clerk (optional — enabled when the Clerk env keys are set). Players join rooms via `adjective-noun-NN` codes or `/join/:code` links and race the same passage. Client hook in `src/hooks/useMultiplayer.ts` manages connection and state. Passages exist twice: seeded in `server/src/passages.ts` and as the offline fallback in `src/data/textPassages.ts`.
 
+### Daily Challenge
+
+`GET /daily` returns today's passage (picked in SQL from `CURRENT_DATE`, so it rolls over on the DB clock like the other boards), the top 10 and the caller's rank. Runs are tagged by `POST /results` with `{ daily: true, passageId }`; the server stamps `race_results.daily_date` only when `passageId` is today's daily passage (migration `006_daily.sql`). Client: `DailyCard` on the welcome screen (hidden when the server is unreachable) and `isDaily` mode in `App.tsx` — RETRY keeps it, anything that swaps the passage clears it.
+
 ### Effects & Competitive Systems
 
 - `src/utils/audioEngine.ts` — synthesized typing sounds via Web Audio API
