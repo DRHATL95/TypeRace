@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { TextPassage, TypingStats, CharacterStatus, RaceResult, FireStreakTier } from '../types/GameTypes';
 import { parseTextToCharacters, calculateRaceResult } from '../utils/typingUtils';
+import { buildRaceInsights, Keystroke, RaceInsights } from '../utils/raceInsights';
 import { playKeystroke, playError, playFanfare, playKeystrokeAtPitch, getMuted, toggleMute, getVolumeLevel, setVolumeLevel } from '../utils/audioEngine';
 import { createBurstOverlay } from '../utils/particleBurst';
 import { useSpeedTier } from '../hooks/useSpeedTier';
@@ -23,7 +24,7 @@ interface TypeRacerProps {
     passage: TextPassage;
     ghostEnabled: boolean;
     sessionStreak: number;
-    onRaceComplete: (result: RaceResult, fireStreak: number) => void;
+    onRaceComplete: (result: RaceResult, fireStreak: number, insights: RaceInsights) => void;
     onNewText: () => void;
     onHome: () => void;
     multiplayerPlayers?: PlayerProgress[];
@@ -63,6 +64,8 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
 
     const inputRef = useRef<HTMLInputElement>(null);
     const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    // Ref, not state: appended every keystroke and only read at the finish.
+    const keystrokeLogRef = useRef<Keystroke[]>([]);
 
     const { recordKeystroke, reset: resetFire, getLongestStreak } = useFireStreak();
 
@@ -101,6 +104,7 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         setFireTier('none');
         setFireCount(0);
         setFireActive(false);
+        keystrokeLogRef.current = [];
         resetFire();
     }, [passage, resetFire]);
 
@@ -188,6 +192,7 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         const typedChar = value[currentCharIndex];
         const expectedChar = passage.text[currentCharIndex];
         const isCorrect = typedChar === expectedChar;
+        keystrokeLogRef.current.push({ t: Date.now() - stats.startTime, correct: isCorrect, expected: expectedChar });
 
         // Audio feedback
         if (isCorrect) {
@@ -260,12 +265,13 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
             setStats(finalStats);
 
             const result = calculateRaceResult(finalStats, passage.text.length);
+            const insights = buildRaceInsights(keystrokeLogRef.current, result.timeElapsed);
 
             const burst = createBurstOverlay();
             burst.start();
             setTimeout(() => {
                 burst.cleanup();
-                onRaceComplete(result, getLongestStreak());
+                onRaceComplete(result, getLongestStreak(), insights);
             }, 800);
         }
     };

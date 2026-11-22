@@ -7,6 +7,7 @@ import Lobby from './components/Lobby';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult } from './utils/api';
+import { RaceInsights } from './utils/raceInsights';
 import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
 import { useAppAuth } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
@@ -39,6 +40,7 @@ declare global {
 function App() {
     const [gameState, setGameState] = useState<GameState>('welcome');
     const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
+    const [raceInsights, setRaceInsights] = useState<RaceInsights | null>(null);
     const [difficulty, setDifficultyState] = useState<Difficulty>(getDifficulty());
     const [category, setCategoryState] = useState<PassageCategory>(getCategory());
     const [passage, setPassage] = useState<TextPassage>(getRandomPassage(getDifficulty(), getCategory()));
@@ -159,8 +161,9 @@ function App() {
         setGameState('racing');
     }, [difficulty, category, getPassage]);
 
-    const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number) => {
+    const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number, insights: RaceInsights) => {
         setRaceResult(result);
+        setRaceInsights(insights);
         setLastFireStreak(fireStreak);
 
         if (mp.state === 'racing') {
@@ -318,6 +321,7 @@ function App() {
             {gameState === 'results' && raceResult && (
                 <ResultsScreen
                     result={raceResult}
+                    insights={raceInsights}
                     isNewBest={isNewBest}
                     fireStreak={lastFireStreak}
                     onRestart={restartRace}

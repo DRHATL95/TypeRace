@@ -3,6 +3,7 @@ import { RaceResult, PassageCategory, Difficulty } from '../types/GameTypes';
 import { getPerformanceMessage, formatTime } from '../utils/typingUtils';
 import { getHistory, getPlayerName, getGuestId } from '../utils/storage';
 import { useAppAuth } from '../hooks/useAuthToken';
+import { RaceInsights } from '../utils/raceInsights';
 import Sparkline from './Sparkline';
 import './ResultsScreen.css';
 
@@ -15,6 +16,7 @@ interface PlayerResult {
 
 interface ResultsScreenProps {
     result: RaceResult;
+    insights?: RaceInsights | null;
     isNewBest: boolean;
     fireStreak: number;
     onRestart: () => void;
@@ -52,7 +54,7 @@ const CATEGORIES: { value: PassageCategory; label: string }[] = [
 
 const API_BASE = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
     const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
     const { isSignedIn, userName } = useAppAuth();
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
