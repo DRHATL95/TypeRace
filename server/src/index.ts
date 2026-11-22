@@ -8,7 +8,7 @@ import { clerkMiddleware, getAuth, verifyToken } from '@clerk/express';
 import { Room } from './room';
 import { ClientMessage, Difficulty, PassageCategory } from './types';
 import { runMigrations } from './db/migrate';
-import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, getTodayRank, createShare, getShare } from './db';
+import { seedIfEmpty, getPassages, getRandomPassage as getRandomFromDB, getPassageCount, insertRaceResult, getTodayLeaderboard, getMonthlyLeaderboard, getTodayRank, createShare, getShare, getDailyPassage, getDailyLeaderboard } from './db';
 import { nanoid } from 'nanoid';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -168,7 +168,7 @@ function isValidPlayerName(raw: unknown): raw is string {
 
 // Submit a race result
 app.post('/results', writeLimiter, async (req, res) => {
-  const { playerName, wpm, accuracy, fireStreak, difficulty, category, guestId } = req.body;
+  const { playerName, wpm, accuracy, fireStreak, difficulty, category, guestId, daily, passageId } = req.body;
   if (!playerName || wpm == null || accuracy == null || !difficulty || !category) {
     res.status(400).json({ error: 'Missing required fields' });
     return;
@@ -208,6 +208,10 @@ app.post('/results', writeLimiter, async (req, res) => {
   // continuity via user_id and shouldn't double-tag rows.
   const guest_id = userId ? null : sanitizeGuestId(guestId);
   try {
+    // Only counts as a daily run if it was today's passage — a client can't
+    // tag an arbitrary (easier) race onto the daily board.
+    const is_daily = daily === true && typeof passageId === 'string'
+      && passageId === (await getDailyPassage())?.id;
     const id = await insertRaceResult({
       player_name: playerName,
       wpm,
@@ -217,8 +221,9 @@ app.post('/results', writeLimiter, async (req, res) => {
       category,
       user_id: userId,
       guest_id,
+      is_daily,
     });
-    res.status(201).json({ id });
+    res.status(201).json({ id, daily: is_daily });
   } catch (err) {
     res.status(500).json({ error: 'Failed to save result' });
   }
@@ -272,6 +277,29 @@ app.get('/leaderboard/today/me', async (req, res) => {
     res.json(rank);
   } catch {
     res.status(500).json({ error: 'Failed to fetch rank' });
+  }
+});
+
+// Daily Challenge: today's passage + board, and the caller's rank when they
+// identify (Clerk JWT, else ?guestId= — same rules as /leaderboard/today/me).
+app.get('/daily', async (req, res) => {
+  try {
+    const passage = await getDailyPassage();
+    if (!passage) {
+      res.status(404).json({ error: 'No passages available' });
+      return;
+    }
+    let identityKey: string | null = null;
+    try {
+      const auth = getAuth(req);
+      if (auth.userId) identityKey = auth.userId;
+    } catch {}
+    if (!identityKey) identityKey = sanitizeGuestId(req.query.guestId);
+    const { date, ...rest } = passage;
+    const board = await getDailyLeaderboard(identityKey);
+    res.json({ date, passage: rest, ...board });
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch daily challenge' });
   }
 });
 
@@ -446,7 +474,7 @@ if (process.env.NODE_ENV === 'production') {
   // SPA fallback — serve index.html for all non-API routes
   app.get('*', (_req, res, next) => {
     const p = _req.path;
-    if (p.startsWith('/passages') || p.startsWith('/health') || p.startsWith('/results') || p.startsWith('/leaderboard') || p.startsWith('/api/') || p.startsWith('/share/')) {
+    if (p.startsWith('/passages') || p.startsWith('/health') || p.startsWith('/results') || p.startsWith('/leaderboard') || p === '/daily' || p.startsWith('/api/') || p.startsWith('/share/')) {
       return next();
     }
     res.sendFile(path.join(clientDir, 'index.html'));
