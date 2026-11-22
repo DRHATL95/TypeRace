@@ -59,7 +59,7 @@ Server in `server/` (Express + `ws`). Rooms are in memory; passages, race result
 - `src/utils/particleBurst.ts` — canvas particle system for race completion
 - `src/hooks/useSpeedTier.ts` — WPM-reactive visual tiers (normal → overdrive)
 - `src/hooks/useFireStreak.ts` — combo system tracking consecutive correct chars
-- `src/hooks/useGhost.ts` — ghost racing (replays your fastest finished run of the passage; replacement and position rules in `src/utils/ghost.ts`)
+- `src/hooks/useGhost.ts` — ghost racing: replays your fastest finished run of the passage, or, with no saved run, a constant-speed pace ghost at your best WPM for that difficulty (rules in `src/utils/ghost.ts`)
 - `src/utils/storage.ts` — all localStorage persistence (bests, history, streaks, preferences, XP)
 
 ### Electron IPC
