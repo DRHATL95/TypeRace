@@ -24,9 +24,12 @@ RUN npm run build
 FROM node:24-alpine
 WORKDIR /app
 
-# Server dependencies (production only)
+# Server dependencies (production only). npm is removed in the same layer: the
+# container runs `node` directly and never needs it, and its bundled modules
+# (brace-expansion, undici) were the image's only HIGH trivy findings.
 COPY server/package.json server/package-lock.json* ./server/
-RUN cd server && npm ci --omit=dev
+RUN cd server && npm ci --omit=dev \
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # Built server + migrations
 COPY --from=server-build /app/server/dist/ ./server/dist/
