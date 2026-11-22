@@ -46,3 +46,12 @@ assert.equal(ghostIndexAt(fast, 250), 1);
 assert.equal(ghostIndexAt(fast, 9999), 2);            // finished ghost stays on its last char
 
 console.log('ghost OK');
+
+// ── pace ghost (no saved run: constant speed at the player's best WPM) ──
+const { paceIndexAt } = await import('../src/utils/ghost.ts');
+assert.equal(paceIndexAt(60, 0, 100), -1);       // nothing typed at the start
+assert.equal(paceIndexAt(60, 1000, 100), 4);     // 60 WPM = 5 chars/s -> 5th char (index 4) after 1s
+assert.equal(paceIndexAt(60, 60_000, 100), 99);  // capped at the passage end
+assert.equal(paceIndexAt(0, 5000, 100), -1);     // no best yet -> no pace ghost
+
+console.log('pace ghost OK');
