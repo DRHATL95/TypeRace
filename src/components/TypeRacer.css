@@ -382,6 +382,13 @@
     border: 1px solid rgba(255, 170, 0, 0.2);
 }
 
+/* Magenta, like the ghost marker in the passage. */
+.hud-tag.ghost-tag {
+    background: rgba(255, 0, 128, 0.12);
+    color: var(--magenta);
+    border: 1px solid rgba(255, 0, 128, 0.25);
+}
+
 /* ── Volume controls ───────────────────────────────────── */
 .volume-controls {
     display: flex;

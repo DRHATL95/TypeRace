@@ -350,6 +350,7 @@ function App() {
                 <TypeRacer
                     passage={passage}
                     ghostEnabled={ghostEnabled && mp.state === 'disconnected'}
+                    ghostPaceWpm={bests[passage.difficulty]?.wpm ?? null}
                     sessionStreak={sessionStreak}
                     onRaceComplete={handleRaceComplete}
                     onNewText={handleNewText}

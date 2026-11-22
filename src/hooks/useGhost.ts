@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect, useState } from 'react';
 import { getGhostData, saveGhostData } from '../utils/storage';
-import { ghostIndexAt, shouldReplaceGhost } from '../utils/ghost';
+import { ghostIndexAt, paceIndexAt, shouldReplaceGhost } from '../utils/ghost';
 
 interface UseGhostOptions {
   passageId: string;
@@ -8,23 +8,28 @@ interface UseGhostOptions {
   enabled: boolean;
   isStarted: boolean;
   startTime: number;
+  /** Best WPM for this passage's difficulty: drives a constant-speed pace
+   *  ghost when the passage has no saved run. null/0 = no pace ghost. */
+  paceWpm?: number | null;
 }
 
-export function useGhost({ passageId, passageLength, enabled, isStarted, startTime }: UseGhostOptions) {
+/** Which ghost is running: a replay of your fastest saved run of this
+ *  passage, a pace ghost at your best WPM, or none. */
+export type GhostKind = 'run' | 'pace' | null;
+
+export function useGhost({ passageId, passageLength, enabled, isStarted, startTime, paceWpm }: UseGhostOptions) {
   const [ghostIndex, setGhostIndex] = useState(-1);
+  const [ghostKind, setGhostKind] = useState<GhostKind>(null);
   const ghostData = useRef<number[] | null>(null);
   const recordedTimestamps = useRef<number[]>([]);
   const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (enabled) {
-      ghostData.current = getGhostData(passageId);
-    } else {
-      ghostData.current = null;
-    }
+    ghostData.current = enabled ? getGhostData(passageId) : null;
+    setGhostKind(!enabled ? null : ghostData.current ? 'run' : paceWpm && paceWpm > 0 ? 'pace' : null);
     setGhostIndex(-1);
     recordedTimestamps.current = [];
-  }, [passageId, enabled]);
+  }, [passageId, enabled, paceWpm]);
 
   // Clear recorded timestamps whenever the race resets, even if passageId
   // hasn't changed (e.g. "New Text" returns the same passage).
@@ -35,20 +40,22 @@ export function useGhost({ passageId, passageLength, enabled, isStarted, startTi
   }, [isStarted]);
 
   useEffect(() => {
-    if (!isStarted || !ghostData.current || !enabled || startTime === 0) {
+    if (!isStarted || !ghostKind || startTime === 0) {
       return;
     }
 
     const data = ghostData.current;
+    const indexAt = (elapsed: number) =>
+      ghostKind === 'run' && data ? ghostIndexAt(data, elapsed) : paceIndexAt(paceWpm ?? 0, elapsed, passageLength);
 
     intervalRef.current = window.setInterval(() => {
-      setGhostIndex(ghostIndexAt(data, Date.now() - startTime));
+      setGhostIndex(indexAt(Date.now() - startTime));
     }, 50);
 
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isStarted, enabled, startTime]);
+  }, [isStarted, ghostKind, startTime, paceWpm, passageLength]);
 
   const recordTimestamp = useCallback(() => {
     if (startTime > 0) {
@@ -62,5 +69,5 @@ export function useGhost({ passageId, passageLength, enabled, isStarted, startTi
     }
   }, [passageId]);
 
-  return { ghostIndex, recordTimestamp, saveGhost };
+  return { ghostIndex, ghostKind, recordTimestamp, saveGhost };
 }

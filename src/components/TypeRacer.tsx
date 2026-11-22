@@ -23,6 +23,8 @@ interface PlayerProgress {
 interface TypeRacerProps {
     passage: TextPassage;
     ghostEnabled: boolean;
+    /** Best WPM for the passage's difficulty; paces the ghost when there's no saved run. */
+    ghostPaceWpm?: number | null;
     sessionStreak: number;
     onRaceComplete: (result: RaceResult, fireStreak: number, insights: RaceInsights) => void;
     onNewText: () => void;
@@ -35,6 +37,7 @@ interface TypeRacerProps {
 const TypeRacer: React.FC<TypeRacerProps> = ({
     passage,
     ghostEnabled,
+    ghostPaceWpm,
     sessionStreak,
     onRaceComplete,
     onNewText,
@@ -81,10 +84,11 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
 
     const speedTier = useSpeedTier(currentWPM);
 
-    const { ghostIndex, recordTimestamp, saveGhost } = useGhost({
+    const { ghostIndex, ghostKind, recordTimestamp, saveGhost } = useGhost({
         passageId: passage.id,
         passageLength: passage.text.length,
         enabled: ghostEnabled,
+        paceWpm: ghostPaceWpm,
         isStarted,
         startTime: stats.startTime,
     });
@@ -341,6 +345,11 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
                     <span className="hud-tag category">{passage.category}</span>
                     {sessionStreak > 1 && (
                         <span className="hud-tag session-streak">{sessionStreak}x streak</span>
+                    )}
+                    {ghostKind && (
+                        <span className="hud-tag ghost-tag" title={ghostKind === 'run' ? 'Racing your fastest run of this passage' : 'No saved run of this passage yet: racing your best pace'}>
+                            ghost · {ghostKind === 'run' ? 'best run' : `pace ${Math.round(ghostPaceWpm ?? 0)} wpm`}
+                        </span>
                     )}
                 </div>
                 <div className="hud-right">

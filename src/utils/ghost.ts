@@ -19,3 +19,11 @@ export function shouldReplaceGhost(candidate: number[], existing: number[] | nul
   if (!existing || existing.length === 0) return true;
   return candidate[candidate.length - 1] < existing[existing.length - 1];
 }
+
+/** Index a constant-speed "pace ghost" has reached: used when a passage has no
+ *  saved run, at the player's best WPM for its difficulty (1 word = 5 chars).
+ *  Capped at the passage end; -1 before it has typed anything. */
+export function paceIndexAt(wpm: number, elapsedMs: number, length: number): number {
+  if (wpm <= 0 || elapsedMs <= 0) return -1;
+  return Math.min(Math.floor((elapsedMs * wpm * 5) / 60000) - 1, length - 1);
+}
