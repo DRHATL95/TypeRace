@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
-- **Dev (web):** `npm start` or `npm run dev:renderer` — starts React dev server on port 3000
+- **Dev (web):** `npm start` or `npm run dev:renderer` — starts the Vite dev server on port 3000
 - **Dev (Electron):** `npm run dev` — starts React dev server + Electron app (requires `electron` installed)
 - **Build all:** `npm run build` — builds renderer then Electron main process
-- **Build web only:** `npm run build:web`
+- **Build web only:** `npm run build:web` — passes `--base=/` (used by the Dockerfile). Electron builds keep `base: './'` for `file://`; relative assets break `/join/:code` deep links on the web, so don't unify them.
 - **Build Electron main only:** `npm run build:main` — compiles `electron/` via `tsconfig.main.json` into `dist/`
 - **Package desktop:** `npm run package` (or `package:mac`, `package:win`, `package:linux`)
 
 - **Dev (all):** `npm run dev:all` — starts React dev server + multiplayer WebSocket server
 - **Dev (server only):** `npm run dev:server` — starts the WebSocket server on port 3001
 
-No test runner is configured.
+No test runner is configured. `npm run check` runs `scripts/check.mjs`, an assert-based self-check of the pure helpers (`raceInsights.ts`, `progression.ts`) under Node 24's built-in type stripping; keep those files import-free so it can load them.
 
 ## Architecture
 
-Electron + React 18 + TypeScript app (Create React App). Two separate TypeScript compilation targets:
+Electron + React 18 + TypeScript app (Vite). Two separate TypeScript compilation targets:
 
-- **Renderer process** (`src/`, `tsconfig.json`) — React SPA, compiled by CRA/webpack, target ES5/ESNext modules
+- **Renderer process** (`src/`, `tsconfig.json`) — React SPA, built by Vite into `build/`
 - **Main process** (`electron/`, `tsconfig.main.json`) — Electron entry point, compiled to `dist/` as CommonJS
 
 ### State machine
@@ -31,21 +31,23 @@ App is driven by a simple `GameState` type (`'welcome' | 'racing' | 'results'`) 
 
 - `src/App.tsx` — top-level state machine, Electron IPC listener setup
 - `src/components/TypeRacer.tsx` — core typing game logic (character tracking, timer, real-time stats)
-- `src/components/ResultsScreen.tsx` — post-race stats display
+- `src/components/ResultsScreen.tsx` — post-race stats display; hosts `RaceGraph` (per-second WPM + error ticks), `KeyHeatmap` (missed keys) and `LevelProgress`
 - `src/components/WelcomeScreen.tsx` — landing page
 - `src/types/GameTypes.ts` — shared types (`GameState`, `RaceResult`, `TextPassage`, `TypingStats`, `CharacterStatus`)
 - `src/data/textPassages.ts` — passage definitions with difficulty and category
 - `src/utils/typingUtils.ts` — WPM/accuracy calculation, text parsing, performance thresholds
+- `src/utils/raceInsights.ts` — builds the post-race timeline/missed keys from TypeRacer's keystroke log. Passed to `onRaceComplete` as a separate argument, not on `RaceResult`, because the server rebroadcasts `RaceResult` verbatim to every multiplayer opponent
+- `src/utils/progression.ts` — XP per race and the level curve
 - `electron/main.ts` — window creation, app menu with IPC commands
 - `electron/preload.ts` — contextBridge API for secure renderer↔main communication
 
 ### Styling
 
-Pure CSS with glass-morphism design. Each component has a co-located `.css` file. No CSS framework or preprocessor.
+Pure CSS, dark neon theme: tokens (`--cyan`, `--magenta`, `--bg-*`, fonts, glows) and shared keyframes (`fadeUp`, `neonPulse`, …) live in `src/index.css`. Each component has a co-located `.css` file. No CSS framework or preprocessor.
 
 ### Multiplayer
 
-WebSocket server in `server/` (Express + `ws`). In-memory room state, no database. Players join rooms via short codes, race the same passage simultaneously. Client hook in `src/hooks/useMultiplayer.ts` manages connection and state.
+Server in `server/` (Express + `ws`). Rooms are in memory; passages, race results, shares and leaderboards are in PostgreSQL (`DATABASE_URL`, migrations in `server/src/db/`). Auth is Clerk (optional — enabled when the Clerk env keys are set). Players join rooms via `adjective-noun-NN` codes or `/join/:code` links and race the same passage. Client hook in `src/hooks/useMultiplayer.ts` manages connection and state. Passages exist twice: seeded in `server/src/passages.ts` and as the offline fallback in `src/data/textPassages.ts`.
 
 ### Effects & Competitive Systems
 
@@ -54,7 +56,7 @@ WebSocket server in `server/` (Express + `ws`). In-memory room state, no databas
 - `src/hooks/useSpeedTier.ts` — WPM-reactive visual tiers (normal → overdrive)
 - `src/hooks/useFireStreak.ts` — combo system tracking consecutive correct chars
 - `src/hooks/useGhost.ts` — ghost racing (replay personal best timing)
-- `src/utils/storage.ts` — all localStorage persistence (bests, history, streaks, preferences)
+- `src/utils/storage.ts` — all localStorage persistence (bests, history, streaks, preferences, XP)
 
 ### Electron IPC
 
