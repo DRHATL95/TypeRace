@@ -181,9 +181,14 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         const value = e.target.value;
         const currentCharIndex = value.length - 1;
 
-        if (currentCharIndex < 0) {
-            setInputValue('');
-            setStats(prev => ({ ...prev, currentIndex: 0 }));
+        // Deletion (backspace): step the cursor back without scoring. Below,
+        // every change is treated as a new keystroke at the last position, so
+        // a deletion would re-score the now-last char — extra sound, fire
+        // streak tick, a duplicate error and a duplicate missed key.
+        if (value.length < inputValue.length) {
+            setInputValue(value);
+            setCharacters(prev => prev.map((c, i) => (i >= value.length ? { char: c.char, status: 'pending' } : c)));
+            setStats(prev => ({ ...prev, currentIndex: value.length, charactersTyped: value.length }));
             return;
         }
 
@@ -212,10 +217,10 @@ const TypeRacer: React.FC<TypeRacerProps> = ({
         setFireCount(fireState.consecutiveCorrect);
         setFireActive(fireState.active);
 
-        // Ghost recording
-        if (isCorrect) {
-            recordTimestamp();
-        }
+        // Ghost recording: every scored keystroke (correct or not), so the
+        // ghost replays the cursor itself. Recording only correct ones made a
+        // run with typos lag its real position and stall before the end.
+        recordTimestamp();
 
         // Update character status
         setCharacters(prev => {

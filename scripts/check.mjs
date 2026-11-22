@@ -32,3 +32,17 @@ assert.deepEqual(levelFromXp(260), { level: 3, into: 10, needed: 200 }); // 100 
 assert.deepEqual(levelFromXp(-5),  { level: 1, into: 0,  needed: 100 });
 
 console.log('progression OK');
+
+// ── ghost ──
+const { ghostIndexAt, shouldReplaceGhost } = await import('../src/utils/ghost.ts');
+const fast = [100, 200, 300];   // finished at 300ms
+const slow = [400, 800, 1200];  // same passage, finished at 1200ms
+assert.equal(shouldReplaceGhost(slow, fast), false);  // a slower clean run must not replace the best
+assert.equal(shouldReplaceGhost(fast, slow), true);   // a faster run does
+assert.equal(shouldReplaceGhost(fast, null), true);   // first run on a passage
+assert.equal(shouldReplaceGhost([], null), false);    // nothing recorded
+assert.equal(ghostIndexAt(fast, 0), -1);              // ghost hasn't typed yet
+assert.equal(ghostIndexAt(fast, 250), 1);
+assert.equal(ghostIndexAt(fast, 9999), 2);            // finished ghost stays on its last char
+
+console.log('ghost OK');
