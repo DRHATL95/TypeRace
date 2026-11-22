@@ -5,6 +5,8 @@ import { getHistory, getPlayerName, getGuestId } from '../utils/storage';
 import { useAppAuth } from '../hooks/useAuthToken';
 import { RaceInsights } from '../utils/raceInsights';
 import Sparkline from './Sparkline';
+import RaceGraph from './RaceGraph';
+import KeyHeatmap from './KeyHeatmap';
 import './ResultsScreen.css';
 
 interface PlayerResult {
@@ -201,6 +203,12 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, isNewBe
                         <span className="detail-key">{fireTierLabel || 'STREAK'}</span>
                     </div>
                 </div>
+
+                {insights && (
+                    <RaceGraph timeline={insights.timeline} errorTimes={insights.errorTimes} />
+                )}
+
+                {insights && <KeyHeatmap missedKeys={insights.missedKeys} />}
 
                 {recentWPMs.length >= 2 && (
                     <div className="results-sparkline">

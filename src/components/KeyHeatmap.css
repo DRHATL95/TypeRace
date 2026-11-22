@@ -1,0 +1,105 @@
+/* ── Missed-keys heatmap ───────────────────────────────── */
+
+.key-heatmap {
+    width: 100%;
+    padding: 0.9rem 1.1rem 1rem;
+    background: var(--bg-raised);
+    border: 1px solid rgba(0, 240, 255, 0.06);
+    border-radius: 2px;
+    animation: fadeUp 0.6s ease-out 0.55s both;
+}
+
+.key-heatmap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+}
+
+.key-heatmap-label {
+    color: var(--text-ghost);
+}
+
+.key-heatmap-top {
+    display: flex;
+    gap: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.top-key em {
+    font-style: normal;
+    color: var(--magenta);
+}
+
+.key-heatmap-clean {
+    color: var(--green);
+    text-shadow: 0 0 8px var(--green-dim);
+}
+
+.heat-board {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.heat-row {
+    display: flex;
+    gap: 5px;
+}
+
+/* Stagger the rows like a real keyboard. */
+.heat-row-1 { margin-left: 14px; }
+.heat-row-2 { margin-left: -6px; }
+
+.heat-key {
+    --heat: 0;
+    width: 34px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-ghost);
+    background: var(--bg-deep);
+    border: 1px solid rgba(0, 240, 255, 0.08);
+    border-radius: 3px;
+    transition: transform 0.15s ease;
+}
+
+.heat-key.missed {
+    color: var(--text-primary);
+    background: rgba(255, 0, 128, calc(var(--heat) * 0.55));
+    border-color: rgba(255, 0, 128, calc(0.3 + var(--heat) * 0.7));
+    box-shadow: 0 0 calc(var(--heat) * 18px) rgba(255, 0, 128, calc(var(--heat) * 0.6));
+    text-shadow: 0 0 6px rgba(255, 0, 128, 0.8);
+    animation: heatPulse 0.5s ease-out 1s backwards; /* not both: a held transform would block :hover */
+}
+
+.heat-key.missed:hover {
+    transform: translateY(-2px);
+}
+
+.heat-space {
+    width: 200px;
+}
+
+@keyframes heatPulse {
+    from { transform: scale(0.85); opacity: 0.3; }
+    to   { transform: scale(1);    opacity: 1; }
+}
+
+@media (max-width: 600px) {
+    .heat-key { width: 26px; height: 26px; font-size: 0.6rem; }
+    .heat-row, .heat-board { gap: 3px; }
+    .heat-space { width: 150px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .heat-key.missed { animation: none; }
+}
