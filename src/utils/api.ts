@@ -23,23 +23,6 @@ export async function fetchRandomPassage(
   }
 }
 
-export async function fetchPassages(
-  difficulty?: Difficulty,
-  category?: PassageCategory
-): Promise<TextPassage[]> {
-  try {
-    const params = new URLSearchParams();
-    if (difficulty) params.set('difficulty', difficulty);
-    if (category) params.set('category', category);
-
-    const res = await fetch(`${API_BASE}/passages?${params}`);
-    if (!res.ok) return [];
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
 export interface LeaderboardEntry {
   player_name: string;
   wpm: number;

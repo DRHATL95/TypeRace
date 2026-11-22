@@ -4,7 +4,6 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ResultsScreen from './components/ResultsScreen';
 import MultiplayerModal from './components/MultiplayerModal';
 import Lobby from './components/Lobby';
-import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult } from './utils/api';
