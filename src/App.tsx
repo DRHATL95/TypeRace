@@ -4,10 +4,10 @@ import WelcomeScreen from './components/WelcomeScreen';
 import ResultsScreen from './components/ResultsScreen';
 import MultiplayerModal from './components/MultiplayerModal';
 import Lobby from './components/Lobby';
-import RaceTrack from './components/RaceTrack';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
 import { fetchRandomPassage, submitRaceResult } from './utils/api';
+import { RaceInsights } from './utils/raceInsights';
 import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
 import { useAppAuth } from './hooks/useAuthToken';
 import { stopMenuMusic } from './utils/menuMusic';
@@ -19,7 +19,9 @@ import {
     isGhostEnabled, setGhostEnabled,
     getPlayerName, getTodaysBest,
     pruneImplausibleBests, getGuestId,
+    getXp, addXp,
 } from './utils/storage';
+import { xpForRace } from './utils/progression';
 
 // One-shot cleanup on app load: drop any locally-cached PB that fails the
 // modern plausibility floor (e.g. legacy cheat-test rows like 427 WPM @ 6%).
@@ -40,6 +42,7 @@ declare global {
 function App() {
     const [gameState, setGameState] = useState<GameState>('welcome');
     const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
+    const [raceInsights, setRaceInsights] = useState<RaceInsights | null>(null);
     const [difficulty, setDifficultyState] = useState<Difficulty>(getDifficulty());
     const [category, setCategoryState] = useState<PassageCategory>(getCategory());
     const [passage, setPassage] = useState<TextPassage>(getRandomPassage(getDifficulty(), getCategory()));
@@ -53,6 +56,8 @@ function App() {
     const [showMPModal, setShowMPModal] = useState(false);
     const [joinCode, setJoinCode] = useState<string | null>(null);
     const [todaysBest, setTodaysBest] = useState(getTodaysBest());
+    const [xp, setXp] = useState(getXp());
+    const [xpGained, setXpGained] = useState(0);
 
     // Detect /join/:code URL on mount
     useEffect(() => {
@@ -160,9 +165,14 @@ function App() {
         setGameState('racing');
     }, [difficulty, category, getPassage]);
 
-    const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number) => {
+    const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number, insights: RaceInsights) => {
         setRaceResult(result);
+        setRaceInsights(insights);
         setLastFireStreak(fireStreak);
+
+        const gained = xpForRace(result.charactersTyped - result.errors, result.accuracy, passage.difficulty);
+        setXp(addXp(gained));
+        setXpGained(gained);
 
         if (mp.state === 'racing') {
             mp.sendFinished(result);
@@ -282,6 +292,7 @@ function App() {
                     bests={bests}
                     dailyStreak={dailyStreak}
                     totalRaces={totalRaces}
+                    xp={xp}
                     ghostEnabled={ghostEnabled}
                     onGhostToggle={handleGhostToggle}
                     category={category}
@@ -319,6 +330,9 @@ function App() {
             {gameState === 'results' && raceResult && (
                 <ResultsScreen
                     result={raceResult}
+                    insights={raceInsights}
+                    xp={xp}
+                    xpGained={xpGained}
                     isNewBest={isNewBest}
                     fireStreak={lastFireStreak}
                     onRestart={restartRace}

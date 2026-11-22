@@ -14,6 +14,7 @@ import { startMenuMusic, stopMenuMusic } from '../utils/menuMusic';
 import { getMuted, toggleMute, getVolumeLevel, setVolumeLevel } from '../utils/audioEngine';
 import { getPlayerName, getGuestId } from '../utils/storage';
 import NameEditModal from './NameEditModal';
+import LevelProgress from './LevelProgress';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
@@ -24,6 +25,7 @@ interface WelcomeScreenProps {
     bests: PersonalBests;
     dailyStreak: DailyStreak;
     totalRaces: number;
+    xp: number;
     ghostEnabled: boolean;
     onGhostToggle: () => void;
     category: PassageCategory;
@@ -39,6 +41,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     bests,
     dailyStreak,
     totalRaces,
+    xp,
     ghostEnabled,
     onGhostToggle,
     category,
@@ -287,6 +290,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         MULTIPLAYER
                     </button>
                 </div>
+
+                <LevelProgress xp={xp} />
 
                 <div className="welcome-stats-strip">
                     <div className="strip-item">

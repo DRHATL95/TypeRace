@@ -1,0 +1,116 @@
+/* ── Racer level + XP bar ──────────────────────────────── */
+
+.level-progress {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+    max-width: 420px;
+    padding: 0.8rem 1.1rem;
+    background: var(--bg-raised);
+    border: 1px solid rgba(0, 240, 255, 0.08);
+    border-radius: 2px;
+    animation: fadeUp 0.8s ease-out 0.35s both;
+}
+
+.level-progress.with-gain {
+    max-width: none;
+    animation-delay: 0.5s;
+}
+
+.level-badge {
+    flex-shrink: 0;
+    width: 52px;
+    height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.25), rgba(255, 0, 128, 0.25));
+}
+
+.level-badge-label {
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+}
+
+.level-badge-num {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--cyan);
+    text-shadow: 0 0 10px var(--cyan-dim);
+}
+
+.level-track-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.level-track-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-ghost);
+}
+
+.level-track-xp {
+    display: flex;
+    gap: 0.6rem;
+    color: var(--text-secondary);
+}
+
+.level-gain {
+    color: var(--green);
+    text-shadow: 0 0 8px var(--green-dim);
+}
+
+.level-track {
+    height: 6px;
+    background: var(--bg-deep);
+    border: 1px solid rgba(0, 240, 255, 0.08);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.level-track-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta));
+    box-shadow: 0 0 10px var(--cyan-dim);
+}
+
+/* Level-up: the badge re-mounts (keyed on level) so this pops on each new level. */
+.leveled-up .level-badge {
+    animation: levelPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: linear-gradient(135deg, rgba(255, 170, 0, 0.45), rgba(255, 0, 128, 0.35));
+}
+
+.leveled-up .level-badge-num {
+    color: var(--amber);
+    text-shadow: 0 0 14px rgba(255, 170, 0, 0.7);
+}
+
+.leveled-up .level-track-title {
+    color: var(--amber);
+    animation: neonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes levelPop {
+    0%   { transform: scale(0.6); }
+    100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .leveled-up .level-badge,
+    .leveled-up .level-track-title { animation: none; }
+}

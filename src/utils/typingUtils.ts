@@ -58,19 +58,3 @@ export const formatTime = (seconds: number): string => {
   const secs = Math.floor(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
-
-export const getWPMColor = (wpm: number): string => {
-  if (wpm >= 80) return '#4ade80'; // Green
-  if (wpm >= 60) return '#22d3ee'; // Cyan
-  if (wpm >= 40) return '#fbbf24'; // Yellow
-  if (wpm >= 30) return '#fb923c'; // Orange
-  return '#f87171'; // Red
-};
-
-export const getAccuracyColor = (accuracy: number): string => {
-  if (accuracy >= 95) return '#4ade80'; // Green
-  if (accuracy >= 90) return '#22d3ee'; // Cyan
-  if (accuracy >= 85) return '#fbbf24'; // Yellow
-  if (accuracy >= 80) return '#fb923c'; // Orange
-  return '#f87171'; // Red
-};

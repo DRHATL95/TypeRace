@@ -7,6 +7,9 @@ export default defineConfig({
   // Electron loads the packaged renderer over file:// (electron/main.ts builds
   // `file://.../build/index.html`), so asset URLs have to be relative. The
   // default base of '/' would resolve against the filesystem root and 404.
+  // The web build (`npm run build:web`, used by the Dockerfile) overrides this
+  // with --base=/ : relative URLs break deep links like /join/:code, where
+  // ./assets resolves to /join/assets and the server answers with index.html.
   base: './',
 
   build: {
