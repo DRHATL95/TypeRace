@@ -94,11 +94,14 @@ export async function insertRaceResult(result: {
   category: PassageCategory;
   user_id?: string | null;
   guest_id?: string | null;
+  /** Counts toward today's Daily Challenge board. The date is stamped by the
+   *  DB (CURRENT_DATE) so it uses the same clock as getDailyPassage. */
+  is_daily?: boolean;
 }): Promise<number> {
   const { rows } = await pool.query<{ id: number }>(
-    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category, user_id, guest_id)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category, result.user_id || null, result.guest_id || null]
+    `INSERT INTO race_results (player_name, wpm, accuracy, fire_streak, difficulty, category, user_id, guest_id, daily_date)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $9::boolean THEN CURRENT_DATE END) RETURNING id`,
+    [result.player_name, result.wpm, result.accuracy, result.fire_streak, result.difficulty, result.category, result.user_id || null, result.guest_id || null, !!result.is_daily]
   );
   return rows[0].id;
 }
@@ -282,6 +285,66 @@ export async function getMonthlyLeaderboard(
   // Sort by wpm descending and limit to 100
   rows.sort((a, b) => b.wpm - a.wpm);
   return rows.slice(0, 100);
+}
+
+// ── Daily Challenge ──────────────────────────────────────
+
+/** Today's passage, the same for everyone. Deterministic from CURRENT_DATE:
+ *  passages in md5(id) order (a fixed shuffle — plain id order clusters by
+ *  category, e.g. the long rwg-* run), stepped by a prime so a full cycle
+ *  visits every passage once. Uses the DB clock, the same one the
+ *  leaderboards use. Adding passages reshuffles the rotation, which is fine:
+ *  passages are only seeded into an empty table. */
+export async function getDailyPassage(): Promise<(TextPassage & { date: string }) | null> {
+  const { rows } = await pool.query<TextPassage & { date: string }>(`
+    WITH ordered AS (
+      SELECT id, title, text, difficulty, category,
+             ROW_NUMBER() OVER (ORDER BY md5(id)) - 1 AS n,
+             COUNT(*) OVER () AS total
+      FROM passages
+    )
+    SELECT id, title, text, difficulty, category, CURRENT_DATE::text AS date
+    FROM ordered
+    WHERE n = ((CURRENT_DATE - DATE '2000-01-01')::bigint * 7919) % total
+  `);
+  return rows[0] ?? null;
+}
+
+export interface DailyEntry {
+  rank: number;
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  is_authed: boolean;
+}
+
+/** Today's daily board: best run per identity (same dedup key as the other
+ *  boards), top 10, plus the caller's own rank when identityKey is given. */
+export async function getDailyLeaderboard(
+  identityKey: string | null,
+): Promise<{ top: DailyEntry[]; me: { rank: number; wpm: number } | null; total: number }> {
+  const { rows } = await pool.query<DailyEntry & { identity_key: string; rank: string }>(`
+    WITH best AS (
+      SELECT DISTINCT ON (COALESCE(user_id, guest_id, player_name))
+        COALESCE(user_id, guest_id, player_name) AS identity_key,
+        player_name, wpm, accuracy,
+        (user_id IS NOT NULL) AS is_authed
+      FROM race_results
+      WHERE daily_date = CURRENT_DATE
+      ORDER BY COALESCE(user_id, guest_id, player_name), wpm DESC
+    )
+    SELECT *, RANK() OVER (ORDER BY wpm DESC) AS rank FROM best ORDER BY wpm DESC
+  `);
+  // ponytail: ranks every daily participant per request; fine for a hobby-sized
+  // board, add a LIMIT + separate rank query if a day ever has thousands.
+  // identity_key is stripped before returning — it can be a Clerk user_id.
+  const ranked = rows.map(r => ({ ...r, rank: Number(r.rank) }));
+  const mine = identityKey ? ranked.find(r => r.identity_key === identityKey) : undefined;
+  return {
+    top: ranked.slice(0, 10).map(({ rank, player_name, wpm, accuracy, is_authed }) => ({ rank, player_name, wpm, accuracy, is_authed })),
+    me: mine ? { rank: mine.rank, wpm: mine.wpm } : null,
+    total: ranked.length,
+  };
 }
 
 // ── Multiplayer Results ──────────────────────────────────
