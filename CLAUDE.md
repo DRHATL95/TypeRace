@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Dev (all):** `npm run dev:all` — starts React dev server + multiplayer WebSocket server
 - **Dev (server only):** `npm run dev:server` — starts the WebSocket server on port 3001
 
-No test runner is configured. `npm run check` runs `scripts/check.mjs`, an assert-based self-check of the pure helpers (`raceInsights.ts`, `progression.ts`) under Node 24's built-in type stripping; keep those files import-free so it can load them.
+No test runner is configured. `npm run check` runs `scripts/check.mjs`, an assert-based self-check of the pure helpers (`raceInsights.ts`, `progression.ts`, `ghost.ts`) under Node 24's built-in type stripping; keep those files import-free so it can load them.
 
 ## Architecture
 
@@ -59,7 +59,7 @@ Server in `server/` (Express + `ws`). Rooms are in memory; passages, race result
 - `src/utils/particleBurst.ts` — canvas particle system for race completion
 - `src/hooks/useSpeedTier.ts` — WPM-reactive visual tiers (normal → overdrive)
 - `src/hooks/useFireStreak.ts` — combo system tracking consecutive correct chars
-- `src/hooks/useGhost.ts` — ghost racing (replay personal best timing)
+- `src/hooks/useGhost.ts` — ghost racing: replays your fastest finished run of the passage, or, with no saved run, a constant-speed pace ghost at your best WPM for that difficulty (rules in `src/utils/ghost.ts`)
 - `src/utils/storage.ts` — all localStorage persistence (bests, history, streaks, preferences, XP)
 
 ### Electron IPC
