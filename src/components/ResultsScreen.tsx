@@ -22,6 +22,8 @@ interface ResultsScreenProps {
     insights?: RaceInsights | null;
     xp: number;
     xpGained: number;
+    /** Set for a Daily Challenge run; rank arrives once the submit lands. */
+    daily?: { rank: { rank: number; total: number } | null };
     isNewBest: boolean;
     fireStreak: number;
     onRestart: () => void;
@@ -59,7 +61,7 @@ const CATEGORIES: { value: PassageCategory; label: string }[] = [
 
 const API_BASE = import.meta.env.PROD ? '' : `http://${window.location.hostname}:3001`;
 
-const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, xp, xpGained, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
+const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, xp, xpGained, daily, isNewBest, fireStreak, onRestart, onNewRace, onRetryPassage, podium, onLeaveRoom, rematchVoters, rematchSecondsLeft, category, onCategoryChange, difficulty }) => {
     const [shareState, setShareState] = useState<'idle' | 'sharing' | 'copied' | 'error'>('idle');
     const { isSignedIn, userName } = useAppAuth();
     const performanceMessage = getPerformanceMessage(result.wpm, result.accuracy);
@@ -117,7 +119,12 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({ result, insights, xp, xpG
                 )}
 
                 <div className="results-header">
-                    <div className="results-label">RACE COMPLETE</div>
+                    <div className="results-label">{daily ? 'DAILY CHALLENGE COMPLETE' : 'RACE COMPLETE'}</div>
+                    {daily && (
+                        <div className="results-daily-rank">
+                            {daily.rank ? <>#{daily.rank.rank} <span>OF {daily.rank.total} TODAY</span></> : <span>RANKING…</span>}
+                        </div>
+                    )}
                     <div className="results-rank" style={{ color: rank.color, borderColor: rank.color }}>
                         <span className="rank-letter">{rank.label}</span>
                     </div>

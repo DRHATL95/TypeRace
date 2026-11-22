@@ -6,7 +6,7 @@ import MultiplayerModal from './components/MultiplayerModal';
 import Lobby from './components/Lobby';
 import { GameState, RaceResult, Difficulty, PassageCategory, TextPassage } from './types/GameTypes';
 import { getRandomPassage } from './data/textPassages';
-import { fetchRandomPassage, submitRaceResult } from './utils/api';
+import { fetchRandomPassage, submitRaceResult, fetchDaily } from './utils/api';
 import { RaceInsights } from './utils/raceInsights';
 import { useMultiplayer, RoomMode } from './hooks/useMultiplayer';
 import { useAppAuth } from './hooks/useAuthToken';
@@ -58,6 +58,10 @@ function App() {
     const [todaysBest, setTodaysBest] = useState(getTodaysBest());
     const [xp, setXp] = useState(getXp());
     const [xpGained, setXpGained] = useState(0);
+    // Daily Challenge mode: set by the welcome card, kept by RETRY, cleared by
+    // anything that swaps the passage. dailyRank is filled in after submit.
+    const [isDaily, setIsDaily] = useState(false);
+    const [dailyRank, setDailyRank] = useState<{ rank: number; total: number } | null>(null);
 
     // Detect /join/:code URL on mount
     useEffect(() => {
@@ -110,6 +114,7 @@ function App() {
         if (mp.state === 'racing' && mp.passage) {
             stopMenuMusic();
             setPassage(mp.passage);
+            setIsDaily(false);
             setRaceResult(null);
             setIsNewBest(false);
             setGameState('racing');
@@ -160,10 +165,21 @@ function App() {
         stopMenuMusic();
         const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
+        setIsDaily(false);
         setRaceResult(null);
         setIsNewBest(false);
         setGameState('racing');
     }, [difficulty, category, getPassage]);
+
+    const startDaily = useCallback((dailyPassage: TextPassage) => {
+        stopMenuMusic();
+        setPassage(dailyPassage);
+        setIsDaily(true);
+        setDailyRank(null);
+        setRaceResult(null);
+        setIsNewBest(false);
+        setGameState('racing');
+    }, []);
 
     const handleRaceComplete = useCallback((result: RaceResult, fireStreak: number, insights: RaceInsights) => {
         setRaceResult(result);
@@ -178,14 +194,19 @@ function App() {
             mp.sendFinished(result);
         }
 
-        const newBest = updateBest(difficulty, result.wpm, result.accuracy);
+        // The daily passage carries its own difficulty/category, which needn't
+        // match the player's current picker selection.
+        const raceDifficulty = isDaily ? passage.difficulty : difficulty;
+        const raceCategory = isDaily ? passage.category : category;
+
+        const newBest = updateBest(raceDifficulty, result.wpm, result.accuracy);
         setIsNewBest(newBest);
         setBests(getBests());
 
         addHistoryEntry({
             wpm: result.wpm,
             accuracy: result.accuracy,
-            difficulty,
+            difficulty: raceDifficulty,
             passageTitle: passage.title,
             timestamp: Date.now(),
             fireStreak,
@@ -198,16 +219,22 @@ function App() {
         // as their Clerk identity rather than the anonymous device slug.
         const guestId = getGuestId();
         const playerName = (isSignedIn && userName) ? userName : (getPlayerName() || guestId);
-        getAuthToken().then(token => {
-            submitRaceResult({
+        setDailyRank(null);
+        getAuthToken().then(async token => {
+            await submitRaceResult({
                 playerName,
                 wpm: result.wpm,
                 accuracy: result.accuracy,
                 fireStreak: fireStreak,
-                difficulty,
-                category,
+                difficulty: raceDifficulty,
+                category: raceCategory,
                 guestId,
+                ...(isDaily ? { daily: true, passageId: passage.id } : {}),
             }, token);
+            if (isDaily) {
+                const d = await fetchDaily(guestId, token);
+                if (d?.me) setDailyRank({ rank: d.me.rank, total: d.total });
+            }
         });
 
         setSessionStreak(prev => prev + 1);
@@ -217,7 +244,7 @@ function App() {
         if (mp.state !== 'racing') {
             setGameState('results');
         }
-    }, [difficulty, category, passage, mp, getAuthToken, userName, isSignedIn]);
+    }, [difficulty, category, passage, isDaily, mp, getAuthToken, userName, isSignedIn]);
 
     const restartRace = useCallback(async () => {
         if (mp.state !== 'disconnected') {
@@ -228,6 +255,7 @@ function App() {
         setIsNewBest(false);
         const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
+        setIsDaily(false);
         setGameState('racing');
     }, [difficulty, category, mp, getPassage]);
 
@@ -244,6 +272,7 @@ function App() {
             mp.leave();
         }
         setGameState('welcome');
+        setIsDaily(false);
         setRaceResult(null);
         setIsNewBest(false);
         setShowMPModal(false);
@@ -252,6 +281,7 @@ function App() {
     const handleNewText = useCallback(async () => {
         const newPassage = await getPassage(difficulty, category);
         setPassage(newPassage);
+        setIsDaily(false);
     }, [difficulty, category, getPassage]);
 
     const handleStartMultiplayer = useCallback(() => {
@@ -286,6 +316,7 @@ function App() {
             {gameState === 'welcome' && !isInMultiplayerLobby && (
                 <WelcomeScreen
                     onStartSolo={startRace}
+                    onStartDaily={startDaily}
                     onStartMultiplayer={handleStartMultiplayer}
                     difficulty={difficulty}
                     onDifficultyChange={handleDifficultyChange}
@@ -333,6 +364,7 @@ function App() {
                     insights={raceInsights}
                     xp={xp}
                     xpGained={xpGained}
+                    daily={isDaily ? { rank: dailyRank } : undefined}
                     isNewBest={isNewBest}
                     fireStreak={lastFireStreak}
                     onRestart={restartRace}

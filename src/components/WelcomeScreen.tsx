@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { SignInButton, UserButton } from '@clerk/clerk-react';
 import { useAppAuth } from '../hooks/useAuthToken';
-import { Difficulty, PassageCategory, PersonalBests, DailyStreak } from '../types/GameTypes';
+import { Difficulty, PassageCategory, PersonalBests, DailyStreak, TextPassage } from '../types/GameTypes';
 import {
     TodayLeaderboard,
     MonthlyLeaderboardEntry,
@@ -15,10 +15,12 @@ import { getMuted, toggleMute, getVolumeLevel, setVolumeLevel } from '../utils/a
 import { getPlayerName, getGuestId } from '../utils/storage';
 import NameEditModal from './NameEditModal';
 import LevelProgress from './LevelProgress';
+import DailyCard from './DailyCard';
 import './WelcomeScreen.css';
 
 interface WelcomeScreenProps {
     onStartSolo: () => void;
+    onStartDaily: (passage: TextPassage) => void;
     onStartMultiplayer: () => void;
     difficulty: Difficulty;
     onDifficultyChange: (d: Difficulty) => void;
@@ -35,6 +37,7 @@ interface WelcomeScreenProps {
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     onStartSolo,
+    onStartDaily,
     onStartMultiplayer,
     difficulty,
     onDifficultyChange,
@@ -290,6 +293,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                         MULTIPLAYER
                     </button>
                 </div>
+
+                <DailyCard onPlay={onStartDaily} />
 
                 <LevelProgress xp={xp} />
 

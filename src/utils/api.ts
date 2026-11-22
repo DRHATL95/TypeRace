@@ -23,6 +23,42 @@ export async function fetchRandomPassage(
   }
 }
 
+export interface DailyEntry {
+  rank: number;
+  player_name: string;
+  wpm: number;
+  accuracy: number;
+  is_authed: boolean;
+}
+
+export interface DailyChallenge {
+  /** YYYY-MM-DD on the server's clock */
+  date: string;
+  passage: TextPassage;
+  top: DailyEntry[];
+  me: { rank: number; wpm: number } | null;
+  total: number;
+}
+
+/** Today's Daily Challenge. null when the server is unreachable (e.g. the
+ *  desktop app offline) — callers just hide the feature. */
+export async function fetchDaily(
+  guestId: string | null,
+  authToken?: string | null,
+): Promise<DailyChallenge | null> {
+  try {
+    const params = new URLSearchParams();
+    if (guestId) params.set('guestId', guestId);
+    const headers: Record<string, string> = {};
+    if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+    const res = await fetch(`${API_BASE}/daily?${params}`, { headers });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export interface LeaderboardEntry {
   player_name: string;
   wpm: number;
@@ -48,6 +84,10 @@ export async function submitRaceResult(data: {
   difficulty: Difficulty;
   category: PassageCategory;
   guestId?: string;
+  /** Daily Challenge run. The server only honours it when passageId is
+   *  today's daily passage. */
+  daily?: boolean;
+  passageId?: string;
 }, authToken?: string | null): Promise<void> {
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' };

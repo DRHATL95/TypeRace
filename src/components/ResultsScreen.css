@@ -49,6 +49,26 @@
     text-transform: uppercase;
 }
 
+.results-daily-rank {
+    padding: 0.3rem 0.8rem;
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--magenta);
+    border: 1px solid var(--magenta-dim);
+    border-radius: 2px;
+    text-shadow: 0 0 10px var(--magenta-dim);
+}
+
+.results-daily-rank span {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    text-shadow: none;
+}
+
 .results-rank {
     width: 100px;
     height: 100px;
